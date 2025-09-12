@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>ALERT+ Login</title>
-   <link rel="stylesheet" href="ccs/login.css">
+   <link rel="stylesheet" href="{{ asset('ccs/login.css') }}">
   </head>
   <body>
     <div class="auth-container">
@@ -15,10 +15,15 @@
         </div>
         <p class="subtitle">Sign in to access your family's safety dashboard</p>
 
-        <div class="error-message" id="errorMessage"></div>
+        <div class="error-message" id="errorMessage" style="display: {{ $errors->any() ? 'block' : 'none' }};">
+          @if ($errors->any())
+            {{ $errors->first() }}
+          @endif
+        </div>
         <div class="success-message" id="successMessage"></div>
 
-        <form id="loginForm">
+        <form id="loginForm" method="POST" action="{{ route('login.post') }}">
+          @csrf
           <div class="form-group">
             <label for="email">Email Address</label>
             <input
@@ -92,46 +97,7 @@
           }
         });
 
-      // Handle form submission
-      document
-        .getElementById("loginForm")
-        .addEventListener("submit", function (e) {
-          e.preventDefault();
-
-          const email = document.getElementById("email").value;
-          const password = document.getElementById("password").value;
-
-          // Hide any existing messages
-          document.getElementById("errorMessage").style.display = "none";
-          document.getElementById("successMessage").style.display = "none";
-
-          // Simple validation
-          if (!email || !password) {
-            showMessage("Please fill in all fields.", "error");
-            return;
-          }
-
-          if (!isValidEmail(email)) {
-            showMessage("Please enter a valid email address.", "error");
-            return;
-          }
-
-          // Simulate login process
-          showMessage("Signing you in...", "success");
-
-          // Simulate API call delay
-          setTimeout(() => {
-            // For demo purposes, accept any login
-            if (email && password) {
-              showMessage("Login successful! Redirecting...", "success");
-              setTimeout(() => {
-                window.location.href = "{{ route('index') }}";
-              }, 1000);
-            } else {
-              showMessage("Invalid credentials. Please try again.", "error");
-            }
-          }, 1500);
-        });
+      // Form posts to server; client-side helper remains for optional inline validation
 
       function showMessage(message, type) {
         const errorEl = document.getElementById("errorMessage");

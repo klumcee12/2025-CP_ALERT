@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>ALERT+ Register</title>
-    <link rel="stylesheet" href="ccs/register.css">
+    <link rel="stylesheet" href="{{ asset('ccs/register.css') }}">
   </head>
   <body>
     <div class="auth-container">
@@ -17,17 +17,22 @@
           Create your account to start protecting your family
         </p>
 
-        <div class="error-message" id="errorMessage"></div>
+        <div class="error-message" id="errorMessage" style="display: {{ $errors->any() ? 'block' : 'none' }};">
+          @if ($errors->any())
+            {{ $errors->first() }}
+          @endif
+        </div>
         <div class="success-message" id="successMessage"></div>
 
-        <form id="registerForm">
+        <form id="registerForm" method="POST" action="{{ route('register.post') }}">
+          @csrf
           <div class="form-row">
             <div class="form-group">
               <label for="firstName">First Name</label>
               <input
                 type="text"
                 id="firstName"
-                name="firstName"
+                name="first_name"
                 placeholder="First name"
                 required
               />
@@ -37,7 +42,7 @@
               <input
                 type="text"
                 id="lastName"
-                name="lastName"
+                name="last_name"
                 placeholder="Last name"
                 required
               />
@@ -55,28 +60,9 @@
             />
           </div>
 
-          <div class="form-group">
-            <label for="phone">Phone Number</label>
-            <input
-              type="tel"
-              id="phone"
-              name="phone"
-              placeholder="+1 (555) 123-4567"
-              required
-            />
-          </div>
+          
 
-          <div class="form-group">
-            <label for="familySize">Family Size</label>
-            <select id="familySize" name="familySize" required>
-              <option value="">Select family size</option>
-              <option value="1">1 child</option>
-              <option value="2">2 children</option>
-              <option value="3">3 children</option>
-              <option value="4">4 children</option>
-              <option value="5+">5+ children</option>
-            </select>
-          </div>
+          
 
           <div class="form-group">
             <label for="password">Password</label>
@@ -98,7 +84,7 @@
               <input
                 type="password"
                 id="confirmPassword"
-                name="confirmPassword"
+                name="password_confirmation"
                 placeholder="Confirm your password"
                 required
               />
@@ -181,80 +167,7 @@
           }
         });
 
-      // Handle form submission
-      document
-        .getElementById("registerForm")
-        .addEventListener("submit", function (e) {
-          e.preventDefault();
-
-          const firstName = document.getElementById("firstName").value;
-          const lastName = document.getElementById("lastName").value;
-          const email = document.getElementById("email").value;
-          const phone = document.getElementById("phone").value;
-          const familySize = document.getElementById("familySize").value;
-          const password = document.getElementById("password").value;
-          const confirmPassword =
-            document.getElementById("confirmPassword").value;
-          const terms = document.getElementById("terms").checked;
-
-          // Hide any existing messages
-          document.getElementById("errorMessage").style.display = "none";
-          document.getElementById("successMessage").style.display = "none";
-
-          // Validation
-          if (
-            !firstName ||
-            !lastName ||
-            !email ||
-            !phone ||
-            !familySize ||
-            !password ||
-            !confirmPassword
-          ) {
-            showMessage("Please fill in all required fields.", "error");
-            return;
-          }
-
-          if (!isValidEmail(email)) {
-            showMessage("Please enter a valid email address.", "error");
-            return;
-          }
-
-          if (password.length < 8) {
-            showMessage(
-              "Password must be at least 8 characters long.",
-              "error"
-            );
-            return;
-          }
-
-          if (password !== confirmPassword) {
-            showMessage("Passwords do not match.", "error");
-            return;
-          }
-
-          if (!terms) {
-            showMessage(
-              "You must agree to the Terms of Service to continue.",
-              "error"
-            );
-            return;
-          }
-
-          // Simulate registration process
-          showMessage("Creating your account...", "success");
-
-          // Simulate API call delay
-          setTimeout(() => {
-            showMessage(
-              "Account created successfully! Redirecting to login...",
-              "success"
-            );
-            setTimeout(() => {
-              window.location.href = "{{ route('login') }}";
-            }, 1500);
-          }, 2000);
-        });
+      // Form posts to server; client-side validation is handled by Laravel
 
       function showMessage(message, type) {
         const errorEl = document.getElementById("errorMessage");

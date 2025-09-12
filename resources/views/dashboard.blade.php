@@ -4,365 +4,8 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>ALERT+ Parent Dashboard</title>
-    <style>
-      :root {
-        --teal: #19c3b4; /* brand */
-        --teal-700: #0ea5a4;
-        --teal-900: #0b7f78;
-        --ink: #0f172a; /* slate-900 */
-        --muted: #64748b; /* slate-500 */
-        --bg: #f6faf9;
-        --white: #ffffff;
-        --danger: #ef4444;
-        --success: #22c55e;
-        --warn: #f59e0b;
-        --radius: 16px;
-        --shadow: 0 10px 30px rgba(2, 8, 23, 0.08);
-      }
-      * {
-        box-sizing: border-box;
-      }
-      html,
-      body {
-        height: 100%;
-      }
-      body {
-        margin: 0;
-        font: 16px/1.4 ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto,
-          Inter, Arial;
-        background: var(--bg);
-        color: var(--ink);
-      }
-      a {
-        color: inherit;
-      }
-      /* Layout */
-      .app {
-        min-height: 100%;
-        display: grid;
-        grid-template-columns: 280px 1fr;
-        grid-template-rows: 72px 1fr;
-      }
-      header {
-        grid-column: 1/-1;
-        display: flex;
-        align-items: center;
-        gap: 16px;
-        padding: 0 20px;
-        background: var(--teal);
-        color: #fff;
-        position: sticky;
-        top: 0;
-        z-index: 5;
-      }
-      .brand {
-        font-weight: 800;
-        font-size: 24px;
-        letter-spacing: 0.5px;
-      }
-      .brand sup {
-        font-weight: 700;
-        font-size: 14px;
-        opacity: 0.9;
-        margin-left: 2px;
-      }
-      .hamburger {
-        display: none;
-        margin-left: auto;
-        border: 0;
-        background: transparent;
-        color: #fff;
-        font-size: 28px;
-        line-height: 1;
-        cursor: pointer;
-      }
-
-      aside {
-        background: #e9fbf9;
-        border-right: 1px solid #d6f3f0;
-        padding: 18px;
-        display: flex;
-        flex-direction: column;
-        gap: 12px;
-      }
-      .nav-btn {
-        appearance: none;
-        width: 100%;
-        border: 0;
-        border-radius: 999px;
-        padding: 14px 16px;
-        background: #fff;
-        color: var(--ink);
-        text-align: left;
-        font-weight: 700;
-        box-shadow: var(--shadow);
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        gap: 12px;
-      }
-      .nav-btn[aria-current="page"],
-      .nav-btn:hover {
-        background: var(--ink);
-        color: #fff;
-      }
-
-      main {
-        padding: 20px;
-      }
-      .page {
-        display: none;
-      }
-      .page.active {
-        display: block;
-      }
-
-      /* Cards & components */
-      .row {
-        display: grid;
-        gap: 16px;
-      }
-      .row.cols-2 {
-        grid-template-columns: 1.1fr 1fr;
-      }
-      .row.cols-3 {
-        grid-template-columns: repeat(3, 1fr);
-      }
-      .card {
-        background: #fff;
-        border-radius: var(--radius);
-        box-shadow: var(--shadow);
-        padding: 16px;
-      }
-      .title {
-        font-size: 18px;
-        font-weight: 800;
-        margin: 0 0 12px;
-      }
-
-      .statusbar {
-        display: flex;
-        gap: 12px;
-        flex-wrap: wrap;
-      }
-      .chip {
-        background: #f1fbfa;
-        border: 1px solid #d6f3f0;
-        padding: 8px 12px;
-        border-radius: 999px;
-        font-weight: 600;
-        color: var(--teal-900);
-      }
-
-      .toolbar {
-        display: flex;
-        gap: 10px;
-        flex-wrap: wrap;
-        margin-bottom: 12px;
-      }
-      .btn {
-        appearance: none;
-        border: 0;
-        border-radius: 999px;
-        padding: 12px 16px;
-        background: var(--teal);
-        color: #fff;
-        font-weight: 800;
-        cursor: pointer;
-        box-shadow: var(--shadow);
-      }
-      .btn.secondary {
-        background: #fff;
-        color: var(--ink);
-        border: 1px solid #e2e8f0;
-      }
-      .btn.ghost {
-        background: transparent;
-        color: var(--teal-900);
-        border: 1px dashed #b6ece6;
-      }
-      .btn.danger {
-        background: var(--danger);
-      }
-      .btn:disabled {
-        opacity: 0.6;
-        cursor: not-allowed;
-      }
-
-      .banner {
-        background: #d0f7f3;
-        border: 1px solid #baf0ea;
-        color: #065f5b;
-        border-radius: 999px;
-        padding: 12px 16px;
-        font-weight: 800;
-        display: flex;
-        align-items: center;
-        gap: 10px;
-      }
-      .banner.success {
-        background: #def7ec;
-        border-color: #b7efda;
-        color: #064e3b;
-      }
-      .banner.warn {
-        background: #fff7ed;
-        border-color: #fed7aa;
-        color: #7c2d12;
-      }
-
-      .list {
-        display: grid;
-        gap: 10px;
-        max-height: 380px;
-        overflow: auto;
-      }
-      .item {
-        display: grid;
-        grid-template-columns: 40px 1fr auto;
-        gap: 12px;
-        align-items: center;
-        background: #f9fefe;
-        border: 1px solid #e6f7f4;
-        border-radius: 14px;
-        padding: 10px;
-      }
-      .avatar {
-        width: 40px;
-        height: 40px;
-        border-radius: 50%;
-        display: grid;
-        place-items: center;
-        font-weight: 800;
-        background: var(--teal);
-        color: #fff;
-      }
-      .item .meta {
-        font-size: 12px;
-        color: var(--muted);
-      }
-
-      .map {
-        background: linear-gradient(180deg, #f2fbfa, #e4f7f4);
-        border: 1px solid #dbf4f0;
-        border-radius: 14px;
-        height: 380px;
-        display: grid;
-        place-items: center;
-        position: relative;
-      }
-      .coords {
-        position: absolute;
-        bottom: 10px;
-        left: 10px;
-        background: #fff;
-        border-radius: 10px;
-        padding: 8px 10px;
-        font-size: 12px;
-        box-shadow: var(--shadow);
-      }
-
-      label {
-        font-weight: 700;
-        display: block;
-        margin-bottom: 6px;
-      }
-      input,
-      select {
-        width: 100%;
-        border: 1px solid #e2e8f0;
-        border-radius: 12px;
-        padding: 10px 12px;
-        font: inherit;
-      }
-      .grid-2 {
-        display: grid;
-        gap: 12px;
-        grid-template-columns: 1fr 1fr;
-      }
-
-      /* Table-like timeline */
-      .timeline {
-        width: 100%;
-        border-collapse: collapse;
-      }
-      .timeline th,
-      .timeline td {
-        border-bottom: 1px solid #eef2f7;
-        padding: 10px;
-        text-align: left;
-      }
-      .timeline th {
-        font-size: 12px;
-        color: var(--muted);
-        text-transform: uppercase;
-        letter-spacing: 0.04em;
-      }
-      .tag {
-        display: inline-block;
-        border-radius: 999px;
-        padding: 4px 8px;
-        border: 1px solid #e2e8f0;
-        background: #fff;
-        font-size: 12px;
-      }
-      .tag.success {
-        border-color: #bbf7d0;
-        background: #ecfdf5;
-        color: #065f46;
-      }
-      .tag.fail {
-        border-color: #fecaca;
-        background: #fef2f2;
-        color: #7f1d1d;
-      }
-
-      /* Modal */
-      .modal-backdrop {
-        position: fixed;
-        inset: 0;
-        background: rgba(2, 6, 23, 0.55);
-        display: none;
-        align-items: center;
-        justify-content: center;
-        padding: 20px;
-        z-index: 10;
-      }
-      .modal {
-        background: #fff;
-        border-radius: 18px;
-        box-shadow: var(--shadow);
-        max-width: 560px;
-        width: 100%;
-        padding: 20px;
-      }
-
-      /* Responsive */
-      @media (max-width: 1024px) {
-        .row.cols-2 {
-          grid-template-columns: 1fr;
-        }
-        .row.cols-3 {
-          grid-template-columns: 1fr;
-        }
-      }
-      @media (max-width: 860px) {
-        .app {
-          grid-template-columns: 1fr;
-          grid-template-rows: 72px auto 1fr;
-        }
-        aside {
-          grid-row: 2;
-          display: none;
-        }
-        aside.open {
-          display: flex;
-        }
-        .hamburger {
-          display: block;
-        }
-      }
-    </style>
+    <meta name="csrf-token" content="{{ csrf_token() }}" />
+    <link rel="stylesheet" href="{{ asset('ccs/dashboard.css') }}">
   </head>
   <body>
     <div class="app" id="app">
@@ -392,7 +35,10 @@
         <button class="nav-btn" data-tab="call">🔔 Presence Call</button>
         <button class="nav-btn" data-tab="settings">⚙️ Settings</button>
         <div style="margin-top: auto"></div>
-        <button class="nav-btn danger" onclick="logout()">🚪 Logout</button>
+        <form id="logoutForm" method="POST" action="{{ route('logout') }}">
+          @csrf
+          <button class="nav-btn danger" type="submit">🚪 Logout</button>
+        </form>
       </aside>
 
       <main>
@@ -622,40 +268,9 @@
     </div>
 
     <script>
-      // ---- Demo data ----
-      const users = [
-        {
-          id: "c1",
-          name: "Aira",
-          deviceId: "ALP-001",
-          sim: "+63•••1234",
-          signal: 4,
-          battery: 87,
-          lastSeen: "5m",
-          coords: { lat: 6.9103, lng: 122.061 },
-        },
-        {
-          id: "c2",
-          name: "Liam",
-          deviceId: "ALP-002",
-          sim: "+63•••5678",
-          signal: 3,
-          battery: 62,
-          lastSeen: "10m",
-          coords: { lat: 6.914, lng: 122.059 },
-        },
-        {
-          id: "c3",
-          name: "Mika",
-          deviceId: "ALP-003",
-          sim: "+63•••9101",
-          signal: 2,
-          battery: 44,
-          lastSeen: "20m",
-          coords: { lat: 6.9085, lng: 122.065 },
-        },
-      ];
-      let activeUserId = users[0].id;
+      // ---- App state (populated from backend) ----
+      let users = [];
+      let activeUserId = null;
       let locationLogs = [];
       let callLogs = [];
 
@@ -710,9 +325,9 @@
           .map((u) => `<option value="${u.id}">${u.name}</option>`)
           .join("");
         el("#userSelect").innerHTML = opts;
-        el("#userSelect").value = activeUserId;
+        if (activeUserId) el("#userSelect").value = activeUserId;
         el("#callUser").innerHTML = opts;
-        el("#callUser").value = activeUserId;
+        if (activeUserId) el("#callUser").value = activeUserId;
       }
 
       // ---- User cards ----
@@ -738,9 +353,11 @@
       // ---- Map + status ----
       function updateMap(u) {
         const c = el("#coords");
-        c.textContent = `Lat ${u.coords.lat.toFixed(
-          5
-        )}, Lng ${u.coords.lng.toFixed(5)} • Last: ${u.lastSeen}`;
+        if (u && u.coords) {
+          c.textContent = `Lat ${u.coords.lat.toFixed(5)}, Lng ${u.coords.lng.toFixed(5)} • Last: ${u.lastSeen ?? "—"}`;
+        } else {
+          c.textContent = "—";
+        }
       }
       function updateStatusbar(u) {
         el("#statusbar").innerHTML = statusChips(u);
@@ -780,7 +397,7 @@
       }
 
       function addLocationLog(u, ok = true) {
-        const addr = ok ? "Near WMSU, Zamboanga City" : "—";
+        const addr = ok ? "—" : "—";
         locationLogs.unshift({
           time: Date.now(),
           user: u.name,
@@ -815,12 +432,14 @@
       function ping() {
         const u = users.find((x) => x.id === activeUserId);
         setBanner("Sending location ping via GSM…");
-        // Simulate GSM+GPS delay
+        // Placeholder: simulate until device integration
         setTimeout(() => {
           const ok = Math.random() > 0.1; // 90% success
           if (ok) {
-            u.coords.lat += randOffset();
-            u.coords.lng += randOffset();
+            if (u.coords) {
+              u.coords.lat += randOffset();
+              u.coords.lng += randOffset();
+            }
             u.lastSeen = "Just now";
             updateMap(u);
             updateStatusbar(u);
@@ -839,34 +458,37 @@
         ping();
       }
 
-      function sendPresenceCall() {
+      async function sendPresenceCall() {
         const uid = el("#callUser").value;
         const u = users.find((x) => x.id === uid);
         const seq = el("#sequence").value;
         const strength = el("#strength").value;
         const dur = el("#duration").value;
         const dnd = el("#dnd").value;
-        const ok = Math.random() > 0.05; // mostly succeeds
-        callLogs.unshift({
-          time: Date.now(),
-          user: u.name,
-          seq,
-          status: ok ? "sent" : "failed",
-        });
-        renderCallLogs();
-        const box = el("#callResult");
-        box.style.display = "block";
-        box.textContent = ok
-          ? `Presence Call sent to ${
-              u.name
-            } — ${seq}, strength ${strength}, ${dur}s (${
-              dnd === "respect" ? "DND respected" : "DND ignored"
-            })`
-          : `Presence Call failed — weak signal.`;
-        setBanner(
-          ok ? "Presence Call sent." : "Presence Call failed — check signal.",
-          ok ? "success" : "warn"
-        );
+
+        try {
+          const res = await fetch("{{ route('dashboard.sendPresenceCall') }}", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "X-CSRF-TOKEN": document.querySelector('meta[name=csrf-token]').content,
+              "Accept": "application/json",
+            },
+            body: JSON.stringify({ child_id: uid, sequence: seq, strength: Number(strength), duration: Number(dur), dnd }),
+          });
+          const data = await res.json();
+          const ok = !!data.ok;
+          callLogs.unshift({ time: Date.now(), user: u.name, seq, status: ok ? "sent" : "failed" });
+          renderCallLogs();
+          const box = el("#callResult");
+          box.style.display = "block";
+          box.textContent = ok
+            ? `Presence Call sent to ${u.name} — ${seq}, strength ${strength}, ${dur}s (${dnd === "respect" ? "DND respected" : "DND ignored"})`
+            : `Presence Call failed.`;
+          setBanner(ok ? "Presence Call sent." : "Presence Call failed — check signal.", ok ? "success" : "warn");
+        } catch (e) {
+          setBanner("Presence Call failed — network error.", "warn");
+        }
       }
 
       function renderCallLogs() {
@@ -886,10 +508,9 @@
       // ---- Map helpers ----
       function openMaps() {
         const u = users.find((x) => x.id === activeUserId);
-        window.open(
-          `https://www.google.com/maps?q=${u.coords.lat},${u.coords.lng}`,
-          "_blank"
-        );
+        if (u && u.coords) {
+          window.open(`https://www.google.com/maps?q=${u.coords.lat},${u.coords.lng}`, "_blank");
+        }
       }
 
       // ---- Modal ----
@@ -900,19 +521,43 @@
         el("#modalBackdrop").style.display = "none";
       }
 
-      function logout() {
-        if (confirm("Are you sure you want to logout?")) {
-          // In a real app, this would clear session/tokens
-          window.location.href = "login.html";
-        }
-      }
+      // Logout handled by POST form submission above
 
       // ---- Init ----
-      function init() {
+      async function init() {
+        // Load children
+        try {
+          const res = await fetch("{{ route('dashboard.children') }}", { headers: { Accept: "application/json" } });
+          const payload = await res.json();
+          users = payload.data || [];
+        } catch (e) {
+          users = [];
+        }
+
+        if (users.length > 0) {
+          activeUserId = users[0].id;
+        }
+
         fillUserSelects();
         renderUserCards();
-        updateMap(users[0]);
-        updateStatusbar(users[0]);
+        updateMap(users[0] || null);
+        updateStatusbar(users[0] || { signal: 0, battery: 0, lastSeen: "—" });
+
+        // Load logs
+        try {
+          const [locRes, callRes] = await Promise.all([
+            fetch("{{ route('dashboard.locationLogs') }}", { headers: { Accept: "application/json" } }),
+            fetch("{{ route('dashboard.presenceCalls') }}", { headers: { Accept: "application/json" } }),
+          ]);
+          const locData = await locRes.json();
+          const callData = await callRes.json();
+          locationLogs = locData.data || [];
+          callLogs = callData.data || [];
+        } catch (e) {
+          locationLogs = [];
+          callLogs = [];
+        }
+
         renderLocationLogs();
         renderCallLogs();
 
@@ -946,4 +591,6 @@
       init();
     </script>
   </body>
-</html>
+ </html>
+
+

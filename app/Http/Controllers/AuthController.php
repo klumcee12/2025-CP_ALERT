@@ -49,13 +49,23 @@ class AuthController extends Controller
     {
         $validated = $request->validate([
             'first_name' => ['required','string','max:255'],
+            'middle_name' => ['nullable','string','max:255'],
             'last_name' => ['required','string','max:255'],
             'email' => ['required','email','max:255','unique:users,email'],
             'password' => ['required','string','min:8','confirmed'],
         ]);
 
+        $nameParts = [
+            $validated['first_name'],
+            $validated['middle_name'] ?? null,
+            $validated['last_name'],
+        ];
+
+        $fullName = trim(implode(' ', array_filter($nameParts)));
+
         $user = User::create([
-            'name' => $validated['first_name'] . ' ' . $validated['last_name'],
+            'name' => $fullName,
+            'middle_name' => $validated['middle_name'] ?? null,
             'email' => $validated['email'],
             'password' => $validated['password'],
         ]);

@@ -38,6 +38,15 @@
               />
             </div>
             <div class="form-group">
+              <label for="middleName">Middle Name (optional)</label>
+              <input
+                type="text"
+                id="middleName"
+                name="middle_name"
+                placeholder="Middle name"
+              />
+            </div>
+            <div class="form-group full">
               <label for="lastName">Last Name</label>
               <input
                 type="text"

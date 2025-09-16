@@ -81,6 +81,10 @@ a {
     gap: 16px;
 }
 
+.form-row .form-group.full {
+    grid-column: 1 / -1;
+}
+
 label {
     font-weight: 700;
     display: block;

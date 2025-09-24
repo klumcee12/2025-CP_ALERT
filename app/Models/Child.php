@@ -14,6 +14,7 @@ class Child extends Model
     protected $fillable = [
         'user_id',
         'name',
+        'category',
         'device_id',
         'sim_number',
         'signal_strength',

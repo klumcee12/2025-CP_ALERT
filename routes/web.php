@@ -3,8 +3,8 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DashboardController;
-use Illuminate\Foundation\Auth\EmailVerificationRequest;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 Route::middleware('guest')->group(function () {
     Route::get('/', [AuthController::class, 'showLogin'])->name('login');
@@ -14,25 +14,31 @@ Route::middleware('guest')->group(function () {
 });
 
 Route::middleware('auth')->group(function () {
-    Route::get('/dashboard', [DashboardController::class, 'index'])->middleware('verified')->name('dashboard');
+    Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::get('/dashboard/children', [DashboardController::class, 'children'])->name('dashboard.children');
     Route::get('/dashboard/location-logs', [DashboardController::class, 'locationLogs'])->name('dashboard.locationLogs');
     Route::get('/dashboard/presence-calls', [DashboardController::class, 'presenceCalls'])->name('dashboard.presenceCalls');
     Route::post('/dashboard/send-presence-call', [DashboardController::class, 'sendPresenceCall'])->name('dashboard.sendPresenceCall');
+    Route::post('/dashboard/children', [DashboardController::class, 'createChild'])->name('dashboard.createChild');
 
-    // Provide signed verification link as JSON for EmailJS integration (dev-friendly)
-    Route::get('/email/verification-link.json', [AuthController::class, 'verificationLinkJson'])->name('verification.link.json');
-
-    // Email verification routes (EmailJS only)
-    Route::get('/email/verify', function () {
-        return view('verify-email');
-    })->name('verification.notice');
-
-    Route::get('/email/verify/{id}/{hash}', function (EmailVerificationRequest $request) {
-        $request->fulfill();
-        return redirect()->route('dashboard');
-    })->middleware(['signed'])->name('verification.verify');
-
-
+    // Email verification disabled
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 });
+
+// Verification handler for EmailJS links (no auth middleware)
+Route::get('/emailjs/verify/{id}/{hash}', function (Request $request, $id, $hash) {
+    if (! $request->hasValidSignature()) {
+        abort(403);
+    }
+
+    $user = \App\Models\User::findOrFail($id);
+    if (sha1($user->email) !== $hash) {
+        abort(403);
+    }
+
+    if (is_null($user->email_verified_at)) {
+        $user->forceFill(['email_verified_at' => now()])->save();
+    }
+
+    return redirect()->route('login')->with('status', 'Email verified. You can now sign in.');
+})->name('emailjs.verify')->middleware('signed');

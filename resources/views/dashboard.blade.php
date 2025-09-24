@@ -252,17 +252,40 @@
       </main>
     </div>
 
-    <!-- Register Device Modal (demo) -->
+    <!-- Add Dependent Modal -->
     <div class="modal-backdrop" id="modalBackdrop">
       <div class="modal">
-        <h3 class="title">Register Device (Demo)</h3>
-        <ol>
-          <li>Enter device ID / scan QR</li>
-          <li>Set parent phone numbers on device</li>
-          <li>Test Ping</li>
-        </ol>
-        <div class="toolbar">
-          <button class="btn" id="btnModalDone">Done</button>
+        <h3 class="title">Add Dependent</h3>
+        <div class="grid-2">
+          <div>
+            <label for="depName">Full Name</label>
+            <input id="depName" placeholder="e.g. Juan Dela Cruz" />
+          </div>
+          <div>
+            <label for="depCategory">Category</label>
+            <select id="depCategory">
+              <option value="normal">Normal</option>
+              <option value="child_with_disability">Child with Disability</option>
+              <option value="bed_ridden">Bed Ridden</option>
+              <option value="elderly">Elderly</option>
+              <option value="disabled_elderly">Disabled Elderly</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+        </div>
+        <div class="grid-2" style="margin-top: 12px">
+          <div>
+            <label for="depDevice">Device ID</label>
+            <input id="depDevice" placeholder="DEVICE-XXXXX" />
+          </div>
+          <div>
+            <label for="depSim">SIM Number (optional)</label>
+            <input id="depSim" placeholder="09xxxxxxxxx" />
+          </div>
+        </div>
+        <div class="toolbar" style="margin-top: 12px">
+          <button class="btn" id="btnSaveDependent">Save</button>
+          <button class="btn secondary" id="btnModalDone">Close</button>
         </div>
       </div>
     </div>
@@ -585,10 +608,58 @@
         });
         el("#btnAddChild").addEventListener("click", openModal);
         el("#btnModalDone").addEventListener("click", closeModal);
+        el("#btnSaveDependent").addEventListener("click", saveDependent);
         el("#btnSendCall").addEventListener("click", sendPresenceCall);
       }
 
       init();
+
+      async function saveDependent() {
+        const name = el('#depName').value.trim();
+        const category = el('#depCategory').value;
+        const device_id = el('#depDevice').value.trim();
+        const sim_number = el('#depSim').value.trim();
+        if (!name || !device_id) {
+          setBanner('Name and Device ID are required.', 'warn');
+          return;
+        }
+        try {
+          const res = await fetch("{{ route('dashboard.createChild') }}", {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content,
+              'Accept': 'application/json',
+            },
+            body: JSON.stringify({ name, category, device_id, sim_number })
+          });
+          if (!res.ok) {
+            const data = await res.json().catch(()=>({}));
+            const msg = data.message || (data.errors ? Object.values(data.errors)[0][0] : 'Failed to add dependent.');
+            setBanner(msg, 'warn');
+            return;
+          }
+          const data = await res.json();
+          // Push to local list
+          users.push({
+            id: data.id,
+            name,
+            category,
+            deviceId: device_id,
+            sim: sim_number || '—',
+            signal: 0,
+            battery: 0,
+            lastSeen: null,
+            coords: null,
+          });
+          fillUserSelects();
+          renderUserCards();
+          closeModal();
+          setBanner('Dependent added successfully.', 'success');
+        } catch (e) {
+          setBanner('Failed to add dependent — network error.', 'warn');
+        }
+      }
     </script>
   </body>
  </html>

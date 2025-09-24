@@ -19,7 +19,7 @@ class DashboardController extends Controller
     {
         $children = Child::where('user_id', Auth::id())
             ->orderBy('name')
-            ->get([ 'id','name','device_id','sim_number','signal_strength','battery_percent','last_seen_at','last_lat','last_lng' ]);
+            ->get([ 'id','name','category','device_id','sim_number','signal_strength','battery_percent','last_seen_at','last_lat','last_lng' ]);
 
         return response()->json([
             'data' => $children->map(function ($c) {
@@ -27,6 +27,7 @@ class DashboardController extends Controller
                     'id' => (string) $c->id,
                     'name' => $c->name,
                     'deviceId' => $c->device_id,
+                    'category' => $c->category,
                     'sim' => $c->sim_number,
                     'signal' => (int) $c->signal_strength,
                     'battery' => (int) $c->battery_percent,
@@ -112,6 +113,36 @@ class DashboardController extends Controller
         ]);
 
         return response()->json(['ok' => $ok, 'id' => $log->id]);
+    }
+
+    public function createChild(Request $request)
+    {
+        $validated = $request->validate([
+            'name' => ['required','string','max:255'],
+            'category' => ['required','in:regular,normal,child_with_disability,bed_ridden'],
+            'device_id' => ['required','string','max:255','unique:children,device_id'],
+            'sim_number' => ['nullable','string','max:255'],
+        ]);
+
+        // Normalize UI alias "normal" -> stored as "regular"
+        $normalizedCategory = $validated['category'] === 'normal' ? 'regular' : $validated['category'];
+
+        $child = Child::create([
+            'user_id' => Auth::id(),
+            'name' => $validated['name'],
+            'category' => $normalizedCategory,
+            'device_id' => $validated['device_id'],
+            'sim_number' => $validated['sim_number'] ?? null,
+            'signal_strength' => 0,
+            'battery_percent' => 0,
+        ]);
+
+        return response()->json([
+            'ok' => true,
+            'id' => (string)$child->id,
+            'name' => $child->name,
+            'category' => $child->category,
+        ]);
     }
 }
 

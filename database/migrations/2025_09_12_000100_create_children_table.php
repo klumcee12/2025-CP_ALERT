@@ -11,6 +11,8 @@ return new class extends Migration {
             $table->id();
             $table->foreignId('user_id')->constrained()->cascadeOnDelete();
             $table->string('name');
+            // Dependent category (e.g., regular, child_with_disability, bed_ridden)
+            $table->string('category')->default('regular');
             $table->string('device_id')->unique();
             $table->string('sim_number')->nullable();
             $table->unsignedTinyInteger('signal_strength')->default(0);

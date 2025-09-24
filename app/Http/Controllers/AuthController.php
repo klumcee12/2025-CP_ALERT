@@ -70,33 +70,28 @@ class AuthController extends Controller
             'password' => $validated['password'],
         ]);
 
-        // Keep user logged in but require verification (EmailJS handles sending)
-        Auth::login($user);
-        $request->session()->regenerate();
-        return redirect()->route('verification.notice');
-    }
+         // Do not log in; frontend (EmailJS) will send email, then user returns to login
+         if ($request->wantsJson() || $request->ajax()) {
+             $expiresAt = Carbon::now()->addMinutes(30);
+             $verificationUrl = URL::temporarySignedRoute(
+                 'emailjs.verify',
+                 $expiresAt,
+                 [
+                     'id' => $user->getKey(),
+                     'hash' => sha1($user->email),
+                 ]
+             );
 
-    public function verificationLinkJson(Request $request)
-    {
-        $user = $request->user();
-        abort_unless($user, 401);
+             return response()->json([
+                 'ok' => true,
+                 'email' => $user->email,
+                 'name' => $fullName,
+                 'link' => $verificationUrl,
+                 'expires_at' => $expiresAt->toIso8601String(),
+             ]);
+         }
 
-        $expiresAt = Carbon::now()->addMinutes(15);
-        $verificationUrl = URL::temporarySignedRoute(
-            'verification.verify',
-            $expiresAt,
-            [
-                'id' => $user->getKey(),
-                'hash' => sha1($user->getEmailForVerification()),
-            ]
-        );
-
-        return response()->json([
-            'email' => $user->email,
-            'name' => $user->name,
-            'link' => $verificationUrl,
-            'expires_at' => $expiresAt->toIso8601String(),
-        ]);
+         return redirect()->route('login')->with('status', 'Registration successful. Please check your email.');
     }
 }
 

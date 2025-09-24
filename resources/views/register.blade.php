@@ -5,6 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>ALERT+ Register</title>
     <link rel="stylesheet" href="{{ asset('ccs/register.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/emailjs-com@3/dist/email.min.js"></script>
+    <script>
+      document.addEventListener('DOMContentLoaded', function() {
+        if (window.emailjs && emailjs.init) {
+          emailjs.init('SwKUulQ_A_AkT71KD');
+        }
+      });
+    </script>
   </head>
   <body>
     <div class="auth-container">
@@ -176,7 +184,54 @@
           }
         });
 
-      // Form posts to server; client-side validation is handled by Laravel
+      // Intercept submit: register via AJAX, send EmailJS, then redirect to login
+      document.getElementById('registerForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const form = e.currentTarget;
+        const formData = new FormData(form);
+        const csrf = formData.get('_token');
+
+        const email = formData.get('email');
+        if (!isValidEmail(email)) {
+          showMessage('Please enter a valid email address.', 'error');
+          return;
+        }
+
+        try {
+          const res = await fetch(form.action, {
+            method: 'POST',
+            headers: {
+              'X-CSRF-TOKEN': csrf,
+              'Accept': 'application/json'
+            },
+            body: formData
+          });
+
+          if (!res.ok) {
+            const data = await res.json().catch(() => ({}));
+            const message = data.message || (data.errors ? Object.values(data.errors)[0][0] : 'Registration failed.');
+            showMessage(message, 'error');
+            return;
+          }
+
+          const data = await res.json();
+
+          if (window.emailjs && emailjs.send) {
+            const verifyLink = data.link;
+            const timestamp = new Date().toLocaleString();
+            await emailjs.send('service_ehcfyd6', 'template_9dseopn', {
+              to_email: data.email,
+              to_name: data.name || formData.get('first_name'),
+              verify_link: verifyLink,
+              time: timestamp,
+            });
+          }
+
+          window.location.href = '{{ route('login') }}';
+        } catch (err) {
+          showMessage('An unexpected error occurred. Please try again.', 'error');
+        }
+      });
 
       function showMessage(message, type) {
         const errorEl = document.getElementById("errorMessage");

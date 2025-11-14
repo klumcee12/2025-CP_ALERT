@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 use App\Models\User;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Carbon;
@@ -113,6 +114,74 @@ class AuthController extends Controller
          }
 
          return redirect()->route('login')->with('status', 'Registration successful. Please check your email.');
+    }
+
+    public function getProfile()
+    {
+        $user = Auth::user();
+        
+        return response()->json([
+            'id' => $user->id,
+            'name' => $user->name,
+            'middle_name' => $user->middle_name,
+            'email' => $user->email,
+            'email_verified_at' => $user->email_verified_at?->toIso8601String(),
+            'created_at' => $user->created_at->toIso8601String(),
+        ]);
+    }
+
+    public function updateProfile(Request $request)
+    {
+        $user = Auth::user();
+        
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'middle_name' => ['nullable', 'string', 'max:255'],
+            'email' => ['required', 'email', 'max:255', 'unique:users,email,' . $user->id],
+        ]);
+
+        $user->update([
+            'name' => $validated['name'],
+            'middle_name' => $validated['middle_name'] ?? null,
+            'email' => $validated['email'],
+        ]);
+
+        return response()->json([
+            'ok' => true,
+            'message' => 'Profile updated successfully',
+            'user' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'middle_name' => $user->middle_name,
+                'email' => $user->email,
+            ],
+        ]);
+    }
+
+    public function updatePassword(Request $request)
+    {
+        $user = Auth::user();
+        
+        $validated = $request->validate([
+            'current_password' => ['required', 'string'],
+            'password' => ['required', 'string', 'min:8', 'confirmed'],
+        ]);
+
+        if (!Hash::check($validated['current_password'], $user->password)) {
+            return response()->json([
+                'ok' => false,
+                'message' => 'Current password is incorrect',
+            ], 422);
+        }
+
+        $user->update([
+            'password' => Hash::make($validated['password']),
+        ]);
+
+        return response()->json([
+            'ok' => true,
+            'message' => 'Password updated successfully',
+        ]);
     }
 }
 

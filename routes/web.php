@@ -21,6 +21,17 @@ Route::middleware('auth')->group(function () {
     Route::post('/dashboard/send-presence-call', [DashboardController::class, 'sendPresenceCall'])->name('dashboard.sendPresenceCall');
     Route::post('/dashboard/children', [DashboardController::class, 'createChild'])->name('dashboard.createChild');
     Route::get('/session/check', [AuthController::class, 'checkSession'])->name('session.check');
+    
+    // Profile management routes
+    Route::get('/profile', [AuthController::class, 'getProfile'])->name('profile.get');
+    Route::put('/profile', [AuthController::class, 'updateProfile'])->name('profile.update');
+    Route::put('/profile/password', [AuthController::class, 'updatePassword'])->name('profile.password.update');
+    
+    // Backup & Export routes
+    Route::get('/dashboard/export/json', [DashboardController::class, 'exportJson'])->name('dashboard.export.json');
+    Route::get('/dashboard/export/csv', [DashboardController::class, 'exportCsv'])->name('dashboard.export.csv');
+    Route::get('/dashboard/backup', [DashboardController::class, 'backup'])->name('dashboard.backup');
+    Route::post('/dashboard/restore', [DashboardController::class, 'restore'])->name('dashboard.restore');
 
     // Email verification disabled
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');

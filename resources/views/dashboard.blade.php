@@ -33,6 +33,10 @@
         >
           Ready — GSM/SMS mode
         </div>
+        <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark mode">
+          <span id="themeIcon">🌙</span>
+          <span id="themeText" style="font-size: 14px;">Dark</span>
+        </button>
         <button class="hamburger" id="hamburger" aria-label="Toggle menu">
           ☰
         </button>
@@ -277,7 +281,41 @@
 
         <!-- SETTINGS PAGE -->
         <section class="page" id="page-settings">
-          <div class="row cols-3">
+          <div class="row cols-2">
+            <div class="card">
+              <h3 class="title">My Profile</h3>
+              <div id="profileError" class="error-message" style="display: none; margin-bottom: 12px; padding: 8px; background: #fee; color: #c33; border-radius: 4px;"></div>
+              <div id="profileSuccess" class="success-message" style="display: none; margin-bottom: 12px; padding: 8px; background: #efe; color: #3c3; border-radius: 4px;"></div>
+              <label for="profileName">Full Name</label>
+              <input id="profileName" type="text" placeholder="Your full name" />
+              <label style="margin-top: 10px" for="profileMiddleName">Middle Name (optional)</label>
+              <input id="profileMiddleName" type="text" placeholder="Middle name" />
+              <label style="margin-top: 10px" for="profileEmail">Email Address</label>
+              <input id="profileEmail" type="email" placeholder="your.email@example.com" />
+              <div style="margin-top: 12px; padding: 8px; background: #f5f5f5; border-radius: 4px; font-size: 0.9em;">
+                <div><strong>Account Created:</strong> <span id="profileCreatedAt">—</span></div>
+                <div style="margin-top: 4px;"><strong>Email Verified:</strong> <span id="profileEmailVerified">—</span></div>
+              </div>
+              <div class="toolbar" style="margin-top: 12px">
+                <button class="btn" id="btnUpdateProfile">Update Profile</button>
+              </div>
+            </div>
+            <div class="card">
+              <h3 class="title">Change Password</h3>
+              <div id="passwordError" class="error-message" style="display: none; margin-bottom: 12px; padding: 8px; background: #fee; color: #c33; border-radius: 4px;"></div>
+              <div id="passwordSuccess" class="success-message" style="display: none; margin-bottom: 12px; padding: 8px; background: #efe; color: #3c3; border-radius: 4px;"></div>
+              <label for="currentPassword">Current Password</label>
+              <input id="currentPassword" type="password" placeholder="Enter current password" />
+              <label style="margin-top: 10px" for="newPassword">New Password</label>
+              <input id="newPassword" type="password" placeholder="Enter new password (min. 8 characters)" />
+              <label style="margin-top: 10px" for="confirmPassword">Confirm New Password</label>
+              <input id="confirmPassword" type="password" placeholder="Confirm new password" />
+              <div class="toolbar" style="margin-top: 12px">
+                <button class="btn" id="btnUpdatePassword">Change Password</button>
+              </div>
+            </div>
+          </div>
+          <div class="row cols-3" style="margin-top: 24px">
             <div class="card">
               <h3 class="title">Family & Access</h3>
               <label>Parent Owner</label>
@@ -327,6 +365,34 @@
                 >
                   Open Help
                 </button>
+              </div>
+            </div>
+          </div>
+          <div class="row cols-2" style="margin-top: 24px">
+            <div class="card">
+              <h3 class="title">Backup & Export</h3>
+              <p style="margin: 0 0 12px; font-size: 0.9em; color: #666;">
+                Export all your data or create a backup of your device configurations.
+              </p>
+              <div id="backupError" class="error-message" style="display: none; margin-bottom: 12px; padding: 8px; background: #fee; color: #c33; border-radius: 4px;"></div>
+              <div id="backupSuccess" class="success-message" style="display: none; margin-bottom: 12px; padding: 8px; background: #efe; color: #3c3; border-radius: 4px;"></div>
+              <div class="toolbar" style="flex-direction: column; gap: 8px; align-items: stretch;">
+                <button class="btn" id="btnExportJson">📥 Export All Data (JSON)</button>
+                <button class="btn secondary" id="btnExportCsv">📊 Export All Data (CSV)</button>
+                <button class="btn ghost" id="btnBackup">💾 Create Backup</button>
+              </div>
+            </div>
+            <div class="card">
+              <h3 class="title">Restore Backup</h3>
+              <p style="margin: 0 0 12px; font-size: 0.9em; color: #666;">
+                Restore device configurations from a previously created backup file.
+              </p>
+              <div id="restoreError" class="error-message" style="display: none; margin-bottom: 12px; padding: 8px; background: #fee; color: #c33; border-radius: 4px;"></div>
+              <div id="restoreSuccess" class="success-message" style="display: none; margin-bottom: 12px; padding: 8px; background: #efe; color: #3c3; border-radius: 4px;"></div>
+              <label for="restoreFile">Backup File (JSON)</label>
+              <input id="restoreFile" type="file" accept=".json" style="margin-bottom: 12px;" />
+              <div class="toolbar">
+                <button class="btn" id="btnRestore">📤 Restore Backup</button>
               </div>
             </div>
           </div>
@@ -393,6 +459,38 @@
         b.className = "banner " + (type === "warn" ? "warn" : "success");
         b.textContent = text;
       }
+      
+      // ---- Dark Mode ----
+      function initTheme() {
+        const savedTheme = localStorage.getItem('theme') || 'light';
+        const html = document.documentElement;
+        html.setAttribute('data-theme', savedTheme);
+        updateThemeIcon(savedTheme);
+      }
+      
+      function toggleTheme() {
+        const html = document.documentElement;
+        const currentTheme = html.getAttribute('data-theme') || 'light';
+        const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+        html.setAttribute('data-theme', newTheme);
+        localStorage.setItem('theme', newTheme);
+        updateThemeIcon(newTheme);
+      }
+      
+      function updateThemeIcon(theme) {
+        const icon = el("#themeIcon");
+        const text = el("#themeText");
+        if (icon && text) {
+          icon.textContent = theme === 'dark' ? '☀️' : '🌙';
+          text.textContent = theme === 'dark' ? 'Light' : 'Dark';
+        }
+      }
+      
+      // Initialize theme on load
+      initTheme();
+      
+      // Theme toggle handler
+      el("#themeToggle")?.addEventListener("click", toggleTheme);
       function randOffset() {
         return (Math.random() - 0.5) * 0.003;
       }
@@ -428,6 +526,10 @@
           if (window.innerWidth < 860) {
             el("#sidebar").classList.remove("open");
           }
+          // Load profile data when settings tab is clicked
+          if (tab === "settings") {
+            loadProfileData();
+          }
         });
       });
 
@@ -435,6 +537,48 @@
       el("#hamburger").addEventListener("click", () => {
         el("#sidebar").classList.toggle("open");
       });
+      
+      // Close sidebar when clicking outside on mobile
+      document.addEventListener("click", (e) => {
+        const sidebar = el("#sidebar");
+        const hamburger = el("#hamburger");
+        if (window.innerWidth <= 860 && sidebar && sidebar.classList.contains("open")) {
+          if (!sidebar.contains(e.target) && !hamburger.contains(e.target)) {
+            sidebar.classList.remove("open");
+          }
+        }
+      });
+      
+      // Touch gesture improvements for mobile
+      let touchStartX = 0;
+      let touchEndX = 0;
+      
+      document.addEventListener("touchstart", (e) => {
+        touchStartX = e.changedTouches[0].screenX;
+      }, { passive: true });
+      
+      document.addEventListener("touchend", (e) => {
+        touchEndX = e.changedTouches[0].screenX;
+        handleSwipe();
+      }, { passive: true });
+      
+      function handleSwipe() {
+        const swipeThreshold = 50;
+        const diff = touchStartX - touchEndX;
+        
+        if (Math.abs(diff) > swipeThreshold) {
+          const sidebar = el("#sidebar");
+          if (window.innerWidth <= 860 && sidebar) {
+            if (diff > 0 && touchStartX < 50) {
+              // Swipe right from left edge - open sidebar
+              sidebar.classList.add("open");
+            } else if (diff < 0 && sidebar.classList.contains("open")) {
+              // Swipe left - close sidebar
+              sidebar.classList.remove("open");
+            }
+          }
+        }
+      }
 
       // ---- Populate selects ----
       function fillUserSelects() {
@@ -961,6 +1105,231 @@
               setBanner("Centered on child.", "success");
             }
           });
+        }
+        
+        // Profile management handlers
+        el("#btnUpdateProfile").addEventListener("click", updateProfile);
+        el("#btnUpdatePassword").addEventListener("click", updatePassword);
+        
+        // Backup & Export handlers
+        el("#btnExportJson").addEventListener("click", () => {
+          window.location.href = "{{ route('dashboard.export.json') }}";
+        });
+        el("#btnExportCsv").addEventListener("click", () => {
+          window.location.href = "{{ route('dashboard.export.csv') }}";
+        });
+        el("#btnBackup").addEventListener("click", () => {
+          window.location.href = "{{ route('dashboard.backup') }}";
+        });
+        el("#btnRestore").addEventListener("click", restoreBackup);
+      }
+
+      // Profile management functions
+      async function loadProfileData() {
+        try {
+          const res = await fetch("{{ route('profile.get') }}", {
+            method: 'GET',
+            headers: {
+              'Accept': 'application/json',
+              'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content,
+            },
+          });
+          
+          if (!res.ok) throw new Error('Failed to load profile');
+          
+          const data = await res.json();
+          
+          el("#profileName").value = data.name || '';
+          el("#profileMiddleName").value = data.middle_name || '';
+          el("#profileEmail").value = data.email || '';
+          
+          if (data.created_at) {
+            const createdDate = new Date(data.created_at);
+            el("#profileCreatedAt").textContent = createdDate.toLocaleDateString() + ' ' + createdDate.toLocaleTimeString();
+          }
+          
+          if (data.email_verified_at) {
+            const verifiedDate = new Date(data.email_verified_at);
+            el("#profileEmailVerified").textContent = 'Yes (' + verifiedDate.toLocaleDateString() + ')';
+          } else {
+            el("#profileEmailVerified").textContent = 'Not verified';
+          }
+        } catch (err) {
+          console.error('Error loading profile:', err);
+        }
+      }
+
+      async function updateProfile() {
+        const name = el("#profileName").value.trim();
+        const middleName = el("#profileMiddleName").value.trim();
+        const email = el("#profileEmail").value.trim();
+        const errorEl = el("#profileError");
+        const successEl = el("#profileSuccess");
+        
+        errorEl.style.display = 'none';
+        successEl.style.display = 'none';
+        
+        if (!name || !email) {
+          errorEl.textContent = 'Name and email are required.';
+          errorEl.style.display = 'block';
+          return;
+        }
+        
+        if (!email.includes('@')) {
+          errorEl.textContent = 'Please enter a valid email address.';
+          errorEl.style.display = 'block';
+          return;
+        }
+        
+        try {
+          const res = await fetch("{{ route('profile.update') }}", {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content,
+              'Accept': 'application/json',
+            },
+            body: JSON.stringify({
+              name: name,
+              middle_name: middleName || null,
+              email: email,
+            }),
+          });
+          
+          const data = await res.json();
+          
+          if (!res.ok) {
+            throw new Error(data.message || 'Failed to update profile');
+          }
+          
+          successEl.textContent = data.message || 'Profile updated successfully!';
+          successEl.style.display = 'block';
+          setBanner('Profile updated successfully!', 'success');
+          
+          // Reload profile data to show updated info
+          setTimeout(loadProfileData, 1000);
+        } catch (err) {
+          errorEl.textContent = err.message || 'Failed to update profile. Please try again.';
+          errorEl.style.display = 'block';
+          setBanner('Failed to update profile.', 'warn');
+        }
+      }
+
+      async function updatePassword() {
+        const currentPassword = el("#currentPassword").value;
+        const newPassword = el("#newPassword").value;
+        const confirmPassword = el("#confirmPassword").value;
+        const errorEl = el("#passwordError");
+        const successEl = el("#passwordSuccess");
+        
+        errorEl.style.display = 'none';
+        successEl.style.display = 'none';
+        
+        if (!currentPassword || !newPassword || !confirmPassword) {
+          errorEl.textContent = 'All password fields are required.';
+          errorEl.style.display = 'block';
+          return;
+        }
+        
+        if (newPassword.length < 8) {
+          errorEl.textContent = 'New password must be at least 8 characters long.';
+          errorEl.style.display = 'block';
+          return;
+        }
+        
+        if (newPassword !== confirmPassword) {
+          errorEl.textContent = 'New password and confirmation do not match.';
+          errorEl.style.display = 'block';
+          return;
+        }
+        
+        try {
+          const res = await fetch("{{ route('profile.password.update') }}", {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content,
+              'Accept': 'application/json',
+            },
+            body: JSON.stringify({
+              current_password: currentPassword,
+              password: newPassword,
+              password_confirmation: confirmPassword,
+            }),
+          });
+          
+          const data = await res.json();
+          
+          if (!res.ok) {
+            throw new Error(data.message || 'Failed to update password');
+          }
+          
+          successEl.textContent = data.message || 'Password updated successfully!';
+          successEl.style.display = 'block';
+          setBanner('Password updated successfully!', 'success');
+          
+          // Clear password fields
+          el("#currentPassword").value = '';
+          el("#newPassword").value = '';
+          el("#confirmPassword").value = '';
+        } catch (err) {
+          errorEl.textContent = err.message || 'Failed to update password. Please try again.';
+          errorEl.style.display = 'block';
+          setBanner('Failed to update password.', 'warn');
+        }
+      }
+
+      async function restoreBackup() {
+        const fileInput = el("#restoreFile");
+        const errorEl = el("#restoreError");
+        const successEl = el("#restoreSuccess");
+        
+        errorEl.style.display = 'none';
+        successEl.style.display = 'none';
+        
+        if (!fileInput.files || fileInput.files.length === 0) {
+          errorEl.textContent = 'Please select a backup file.';
+          errorEl.style.display = 'block';
+          return;
+        }
+        
+        const formData = new FormData();
+        formData.append('backup_file', fileInput.files[0]);
+        
+        try {
+          const res = await fetch("{{ route('dashboard.restore') }}", {
+            method: 'POST',
+            headers: {
+              'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content,
+              'Accept': 'application/json',
+            },
+            body: formData,
+          });
+          
+          const data = await res.json();
+          
+          if (!res.ok) {
+            throw new Error(data.message || 'Failed to restore backup');
+          }
+          
+          let message = data.message || 'Backup restored successfully!';
+          if (data.errors && data.errors.length > 0) {
+            message += '\n\nWarnings:\n' + data.errors.join('\n');
+          }
+          
+          successEl.textContent = message;
+          successEl.style.display = 'block';
+          setBanner('Backup restored successfully!', 'success');
+          
+          // Clear file input and reload children
+          fileInput.value = '';
+          setTimeout(() => {
+            loadChildren();
+          }, 1000);
+        } catch (err) {
+          errorEl.textContent = err.message || 'Failed to restore backup. Please try again.';
+          errorEl.style.display = 'block';
+          setBanner('Failed to restore backup.', 'warn');
         }
       }
 

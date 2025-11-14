@@ -7,7 +7,16 @@
     <meta name="csrf-token" content="{{ csrf_token() }}" />
     <link rel="stylesheet" href="{{ asset('ccs/dashboard.css') }}">
     <!-- Google Maps API -->
-    <script src="https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY&libraries=geometry"></script>
+    @php
+        $mapsApiKey = config('services.google.maps_api_key');
+    @endphp
+    @if($mapsApiKey)
+        <script src="https://maps.googleapis.com/maps/api/js?key={{ $mapsApiKey }}&libraries=geometry"></script>
+    @else
+        <script>
+            console.error('Google Maps API key is not configured. Please set GOOGLE_MAPS_API_KEY in your .env file.');
+        </script>
+    @endif
   </head>
   <body>
     <div class="app" id="app">

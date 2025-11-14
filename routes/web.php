@@ -20,6 +20,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/dashboard/presence-calls', [DashboardController::class, 'presenceCalls'])->name('dashboard.presenceCalls');
     Route::post('/dashboard/send-presence-call', [DashboardController::class, 'sendPresenceCall'])->name('dashboard.sendPresenceCall');
     Route::post('/dashboard/children', [DashboardController::class, 'createChild'])->name('dashboard.createChild');
+    Route::get('/session/check', [AuthController::class, 'checkSession'])->name('session.check');
 
     // Email verification disabled
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');

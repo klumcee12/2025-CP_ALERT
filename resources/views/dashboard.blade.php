@@ -6,6 +6,8 @@
     <title>ALERT+ Parent Dashboard</title>
     <meta name="csrf-token" content="{{ csrf_token() }}" />
     <link rel="stylesheet" href="{{ asset('ccs/dashboard.css') }}">
+    <!-- Google Maps API -->
+    <script src="https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY&libraries=geometry"></script>
   </head>
   <body>
     <div class="app" id="app">
@@ -88,7 +90,6 @@
             <div class="card">
               <h3 class="title">Map</h3>
               <div class="map" id="map">
-                <div>Map preview</div>
                 <div class="coords" id="coords">—</div>
               </div>
               <div class="toolbar" style="margin-top: 12px">
@@ -105,13 +106,85 @@
 
         <!-- USERS PAGE -->
         <section class="page" id="page-users">
-          <div class="row">
+          <div class="row cols-2 users-layout">
             <div class="card">
-              <h3 class="title">Family & Devices</h3>
+              <div class="title-row">
+                <h3 class="title">Family & Devices</h3>
+                <div class="chip badge" id="dependentTotalBadge">0 dependents</div>
+              </div>
               <div class="toolbar">
                 <button class="btn" id="btnAddChild">Register Device</button>
               </div>
               <div class="list" id="userCards"></div>
+            </div>
+            <div class="card profile-card">
+              <h3 class="title">Dependent Profile</h3>
+              <div class="dependent-stats">
+                <div>
+                  <span>Total dependents</span>
+                  <strong id="dependentCount">0</strong>
+                </div>
+                <div>
+                  <span>Registered devices</span>
+                  <strong id="deviceCount">0</strong>
+                </div>
+              </div>
+              <div class="profile-header">
+                <div class="profile-avatar" id="profileAvatar">?</div>
+                <div>
+                  <div class="profile-name" id="profileName">Select a dependent</div>
+                  <div class="profile-meta" id="profileMeta">
+                    Choose someone from the list to view their details.
+                  </div>
+                </div>
+              </div>
+              <div class="profile-grid">
+                <div>
+                  <span>Device ID</span>
+                  <strong id="profileDevice">—</strong>
+                </div>
+                <div>
+                  <span>SIM Number</span>
+                  <strong id="profileSim">—</strong>
+                </div>
+              </div>
+              <div class="profile-grid">
+                <div>
+                  <span>Category</span>
+                  <strong id="profileCategory">—</strong>
+                </div>
+                <div>
+                  <span>Last Seen</span>
+                  <strong id="profileLastSeen">—</strong>
+                </div>
+              </div>
+              <div class="profile-grid">
+                <div>
+                  <span>Signal</span>
+                  <strong id="profileSignal">—</strong>
+                </div>
+                <div>
+                  <span>Battery</span>
+                  <strong id="profileBattery">—</strong>
+                </div>
+              </div>
+              <div class="profile-grid">
+                <div>
+                  <span>Coordinates</span>
+                  <strong id="profileCoords">—</strong>
+                </div>
+              </div>
+              <p class="profile-note" id="profileNote">
+                Keep devices synced to get live battery, signal, and last location updates here.
+              </p>
+              <div class="toolbar">
+                <button class="btn secondary" type="button" id="btnProfilePing" disabled>
+                  Quick Ping
+                </button>
+                <button class="btn ghost" type="button" id="btnProfileLocate" disabled>
+                  Center on Map
+                </button>
+              </div>
             </div>
           </div>
         </section>
@@ -296,6 +369,11 @@
       let activeUserId = null;
       let locationLogs = [];
       let callLogs = [];
+      
+      // ---- Map state ----
+      let map = null;
+      let markers = {};
+      let currentMarker = null;
 
       // ---- Helpers ----
       const fmtTime = (d) => new Date(d).toLocaleString();
@@ -310,10 +388,17 @@
         return (Math.random() - 0.5) * 0.003;
       }
       function statusChips(user) {
+        const signal = Number.isFinite(Number(user.signal))
+          ? Math.max(0, Math.min(5, Number(user.signal)))
+          : 0;
+        const battery =
+          typeof user.battery === "number" ? `${user.battery}%` : "—";
+        const lastSeen = user.lastSeen || "—";
+        const signalBar = signal ? "▮".repeat(signal) : "—";
         return `
-    <span class="chip">Signal: ${"▮".repeat(user.signal)}</span>
-    <span class="chip">Battery: ${user.battery}%</span>
-    <span class="chip">Last reply: ${user.lastSeen}</span>
+    <span class="chip">Signal: ${signalBar}</span>
+    <span class="chip">Battery: ${battery}</span>
+    <span class="chip">Last reply: ${lastSeen}</span>
   `;
       }
 
@@ -353,16 +438,123 @@
         if (activeUserId) el("#callUser").value = activeUserId;
       }
 
+      function updateDependentStats(data = []) {
+        const devices = data.filter((u) => !!u.deviceId).length;
+        const dependents = data.length;
+        const deviceEl = el("#deviceCount");
+        const dependentEl = el("#dependentCount");
+        const badge = el("#dependentTotalBadge");
+        if (deviceEl) deviceEl.textContent = devices;
+        if (dependentEl) dependentEl.textContent = dependents;
+        if (badge) {
+          badge.textContent =
+            dependents === 1 ? "1 dependent" : `${dependents} dependents`;
+        }
+      }
+
+      function formatCategory(code) {
+        const labels = {
+          regular: "Normal",
+          normal: "Normal",
+          child_with_disability: "Child with Disability",
+          bed_ridden: "Bed Ridden",
+          elderly: "Elderly",
+          disabled_elderly: "Disabled Elderly",
+          other: "Other",
+        };
+        return labels[code] || "—";
+      }
+
+      function renderUserProfile() {
+        const user = users.find((u) => u.id === activeUserId);
+        const avatar = el("#profileAvatar");
+        const nameEl = el("#profileName");
+        const metaEl = el("#profileMeta");
+        const deviceEl = el("#profileDevice");
+        const simEl = el("#profileSim");
+        const categoryEl = el("#profileCategory");
+        const lastSeenEl = el("#profileLastSeen");
+        const signalEl = el("#profileSignal");
+        const batteryEl = el("#profileBattery");
+        const coordsEl = el("#profileCoords");
+        const noteEl = el("#profileNote");
+        const pingBtn = el("#btnProfilePing");
+        const locateBtn = el("#btnProfileLocate");
+
+        if (!nameEl || !avatar) return;
+
+        if (!user) {
+          avatar.textContent = "?";
+          nameEl.textContent = "Select a dependent";
+          metaEl.textContent =
+            "Choose someone from the list to view their device details.";
+          deviceEl.textContent = "—";
+          simEl.textContent = "—";
+          categoryEl.textContent = "—";
+          lastSeenEl.textContent = "—";
+          signalEl.textContent = "—";
+          batteryEl.textContent = "—";
+          coordsEl.textContent = "—";
+          noteEl.textContent =
+            "Keep devices synced to get live battery, signal, and last location updates here.";
+          if (pingBtn) pingBtn.disabled = true;
+          if (locateBtn) locateBtn.disabled = true;
+          return;
+        }
+
+        avatar.textContent = (user.name || "?").charAt(0).toUpperCase();
+        nameEl.textContent = user.name;
+        metaEl.textContent = formatCategory(user.category);
+        deviceEl.textContent = user.deviceId || "—";
+        simEl.textContent = user.sim || "—";
+        categoryEl.textContent = formatCategory(user.category);
+        lastSeenEl.textContent = user.lastSeen || "—";
+        const signalLevel = Number.isFinite(Number(user.signal))
+          ? Math.max(0, Math.min(5, Number(user.signal)))
+          : null;
+        signalEl.textContent = signalLevel
+          ? `${"▮".repeat(signalLevel)} (${signalLevel}/5)`
+          : "—";
+        batteryEl.textContent =
+          typeof user.battery === "number" ? `${user.battery}%` : "—";
+        const hasCoords =
+          user.coords &&
+          typeof user.coords.lat === "number" &&
+          typeof user.coords.lng === "number";
+        coordsEl.textContent = hasCoords
+          ? `${user.coords.lat.toFixed(5)}, ${user.coords.lng.toFixed(5)}`
+          : "No recent fix";
+        noteEl.textContent = user.coords
+          ? "Latest GPS lock displayed. Use Quick Ping to refresh."
+          : "No location yet — send a ping or ensure the device is online.";
+        if (pingBtn) pingBtn.disabled = false;
+        if (locateBtn) locateBtn.disabled = !(hasCoords && map);
+      }
+
+      function selectUser(id) {
+        activeUserId = id;
+        fillUserSelects();
+        renderUserCards();
+        renderUserProfile();
+        const u = users.find((x) => x.id === activeUserId);
+        if (u) {
+          updateStatusbar(u);
+          updateMap(u);
+        }
+      }
+
+      window.selectUser = selectUser;
+
       // ---- User cards ----
       function renderUserCards() {
         el("#userCards").innerHTML = users
           .map(
             (u) => `
-    <div class="item">
-      <div class="avatar">${u.name[0]}</div>
+    <div class="item user-card ${u.id === activeUserId ? "active" : ""}" onclick="selectUser('${u.id}')">
+      <div class="avatar">${(u.name || "?").charAt(0).toUpperCase()}</div>
       <div>
         <div style="font-weight:800">${u.name}</div>
-        <div class="meta">Device ${u.deviceId} • SIM ${u.sim}</div>
+        <div class="meta">Device ${u.deviceId || "—"} • SIM ${u.sim || "—"}</div>
         <div class="statusbar" style="margin-top:6px">${statusChips(u)}</div>
       </div>
       <div class="toolbar"><button class="btn secondary" onclick="quickPing('${
@@ -373,13 +565,130 @@
           .join("");
       }
 
+      // ---- Map initialization ----
+      function initMap() {
+        const mapElement = el("#map");
+        if (!mapElement) return;
+        
+        // Default center (you can change this to your preferred location)
+        const defaultCenter = { lat: 14.5995, lng: 120.9842 }; // Manila, Philippines
+        
+        map = new google.maps.Map(mapElement, {
+          zoom: 15,
+          center: defaultCenter,
+          mapTypeId: google.maps.MapTypeId.ROADMAP,
+          styles: [
+            {
+              featureType: "poi",
+              elementType: "labels",
+              stylers: [{ visibility: "off" }]
+            }
+          ],
+          mapTypeControl: true,
+          streetViewControl: false,
+          fullscreenControl: true,
+          zoomControl: true
+        });
+        
+        // Add click listener for map
+        map.addListener('click', function(event) {
+          console.log('Map clicked at:', event.latLng.lat(), event.latLng.lng());
+        });
+      }
+      
+      // ---- Map markers ----
+      function addOrUpdateMarker(user) {
+        if (!map || !user || !user.coords) return;
+        
+        const position = { lat: user.coords.lat, lng: user.coords.lng };
+        
+        // Remove existing marker for this user
+        if (markers[user.id]) {
+          markers[user.id].setMap(null);
+        }
+        
+        // Create new marker
+        const marker = new google.maps.Marker({
+          position: position,
+          map: map,
+          title: `${user.name} - Last seen: ${user.lastSeen || 'Unknown'}`,
+          icon: {
+            url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(`
+              <svg width="32" height="32" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="16" cy="16" r="12" fill="#2563eb" stroke="#fff" stroke-width="3"/>
+                <text x="16" y="20" text-anchor="middle" fill="white" font-family="Arial" font-size="12" font-weight="bold">${user.name[0]}</text>
+              </svg>
+            `),
+            scaledSize: new google.maps.Size(32, 32),
+            anchor: new google.maps.Point(16, 16)
+          }
+        });
+        
+        // Add info window
+        const infoWindow = new google.maps.InfoWindow({
+          content: `
+            <div style="padding: 8px; font-family: Arial, sans-serif;">
+              <h3 style="margin: 0 0 8px 0; color: #2563eb;">${user.name}</h3>
+              <p style="margin: 4px 0; font-size: 14px;"><strong>Device:</strong> ${user.deviceId}</p>
+              <p style="margin: 4px 0; font-size: 14px;"><strong>Last Seen:</strong> ${user.lastSeen || 'Unknown'}</p>
+              <p style="margin: 4px 0; font-size: 14px;"><strong>Signal:</strong> ${user.signal}/5</p>
+              <p style="margin: 4px 0; font-size: 14px;"><strong>Battery:</strong> ${user.battery}%</p>
+            </div>
+          `
+        });
+        
+        marker.addListener('click', function() {
+          infoWindow.open(map, marker);
+        });
+        
+        markers[user.id] = marker;
+        
+        // If this is the active user, center the map and set as current marker
+        if (user.id === activeUserId) {
+          map.setCenter(position);
+          currentMarker = marker;
+        }
+      }
+      
+      function removeMarker(userId) {
+        if (markers[userId]) {
+          markers[userId].setMap(null);
+          delete markers[userId];
+        }
+      }
+      
+      function centerOnUser(userId) {
+        const user = users.find(u => u.id === userId);
+        if (user && user.coords && map) {
+          const position = { lat: user.coords.lat, lng: user.coords.lng };
+          map.setCenter(position);
+          map.setZoom(16);
+          
+          // Highlight the marker
+          if (markers[userId]) {
+            markers[userId].setAnimation(google.maps.Animation.BOUNCE);
+            setTimeout(() => {
+              if (markers[userId]) {
+                markers[userId].setAnimation(null);
+              }
+            }, 2000);
+          }
+        }
+      }
+      
       // ---- Map + status ----
       function updateMap(u) {
         const c = el("#coords");
         if (u && u.coords) {
           c.textContent = `Lat ${u.coords.lat.toFixed(5)}, Lng ${u.coords.lng.toFixed(5)} • Last: ${u.lastSeen ?? "—"}`;
+          
+          // Update map marker
+          addOrUpdateMarker(u);
         } else {
           c.textContent = "—";
+          if (u) {
+            removeMarker(u.id);
+          }
         }
       }
       function updateStatusbar(u) {
@@ -476,8 +785,7 @@
       }
 
       function quickPing(id) {
-        activeUserId = id;
-        fillUserSelects();
+        selectUser(id);
         ping();
       }
 
@@ -559,12 +867,27 @@
 
         if (users.length > 0) {
           activeUserId = users[0].id;
+        } else {
+          activeUserId = null;
         }
 
         fillUserSelects();
         renderUserCards();
-        updateMap(users[0] || null);
-        updateStatusbar(users[0] || { signal: 0, battery: 0, lastSeen: "—" });
+        renderUserProfile();
+        updateDependentStats(users);
+        
+        // Initialize map
+        initMap();
+        
+        // Update map and status after map is initialized
+        setTimeout(() => {
+          const initialUser =
+            users.find((u) => u.id === activeUserId) || users[0] || null;
+          updateMap(initialUser || null);
+          updateStatusbar(
+            initialUser || { signal: 0, battery: 0, lastSeen: "—" }
+          );
+        }, 100);
 
         // Load logs
         try {
@@ -590,11 +913,15 @@
           const u = users.find((x) => x.id === activeUserId);
           updateMap(u);
           updateStatusbar(u);
+          renderUserProfile();
         });
         el("#btnPing").addEventListener("click", ping);
         el("#btnRefresh").addEventListener("click", () => {
           const u = users.find((x) => x.id === activeUserId);
           updateMap(u);
+          if (u && u.coords) {
+            centerOnUser(activeUserId);
+          }
           setBanner("Map refreshed.", "success");
         });
         el("#btnExport").addEventListener("click", exportCSV);
@@ -602,14 +929,30 @@
         el("#filterStatus").addEventListener("change", renderLocationLogs);
         el("#btnOpenMaps").addEventListener("click", openMaps);
         el("#btnCenter").addEventListener("click", () => {
-          const u = users.find((x) => x.id === activeUserId);
-          updateMap(u);
+          centerOnUser(activeUserId);
           setBanner("Centered on child.", "success");
         });
         el("#btnAddChild").addEventListener("click", openModal);
         el("#btnModalDone").addEventListener("click", closeModal);
         el("#btnSaveDependent").addEventListener("click", saveDependent);
         el("#btnSendCall").addEventListener("click", sendPresenceCall);
+        const profilePingBtn = el("#btnProfilePing");
+        if (profilePingBtn) {
+          profilePingBtn.addEventListener("click", () => {
+            if (activeUserId) {
+              quickPing(activeUserId);
+            }
+          });
+        }
+        const profileLocateBtn = el("#btnProfileLocate");
+        if (profileLocateBtn) {
+          profileLocateBtn.addEventListener("click", () => {
+            if (activeUserId) {
+              centerOnUser(activeUserId);
+              setBanner("Centered on child.", "success");
+            }
+          });
+        }
       }
 
       init();
@@ -652,14 +995,215 @@
             lastSeen: null,
             coords: null,
           });
-          fillUserSelects();
-          renderUserCards();
+          selectUser(data.id);
+          updateDependentStats(users);
           closeModal();
           setBanner('Dependent added successfully.', 'success');
         } catch (e) {
           setBanner('Failed to add dependent — network error.', 'warn');
         }
       }
+
+      // ---- Session Management & Auto Logout ----
+      (function() {
+        const SESSION_LIFETIME_MINUTES = 15;
+        const WARNING_THRESHOLD_MINUTES = 2; // Show warning 2 minutes before logout
+        const CHECK_INTERVAL_MS = 30000; // Check every 30 seconds
+        const SESSION_LIFETIME_MS = SESSION_LIFETIME_MINUTES * 60 * 1000;
+        const WARNING_THRESHOLD_MS = WARNING_THRESHOLD_MINUTES * 60 * 1000;
+        
+        let lastActivityTime = Date.now();
+        let warningShown = false;
+        let sessionCheckInterval = null;
+        let warningTimeout = null;
+        let logoutTimeout = null;
+
+        // Track user activity
+        const activityEvents = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart', 'click'];
+        activityEvents.forEach(event => {
+          document.addEventListener(event, updateActivity, true);
+        });
+
+        function updateActivity() {
+          const wasIdle = (Date.now() - lastActivityTime) > 60000; // More than 1 minute idle
+          lastActivityTime = Date.now();
+          
+          // Reset warning if user becomes active again
+          if (warningShown) {
+            warningShown = false;
+            hideWarning();
+          }
+          
+          // If user was idle and is now active, check server session
+          // This will touch the session and keep it alive
+          if (wasIdle) {
+            checkSessionOnActivity();
+          } else {
+            resetTimers();
+          }
+        }
+
+        function showWarning(timeRemaining) {
+          if (warningShown) return;
+          warningShown = true;
+          
+          const minutes = Math.ceil(timeRemaining / 60);
+          const message = `Your session will expire in ${minutes} minute${minutes !== 1 ? 's' : ''} due to inactivity. Please save your work.`;
+          
+          // Create warning banner
+          const warningBanner = document.createElement('div');
+          warningBanner.id = 'sessionWarning';
+          warningBanner.className = 'banner warn';
+          warningBanner.style.cssText = 'position: fixed; top: 60px; left: 50%; transform: translateX(-50%); z-index: 10000; max-width: 600px; padding: 12px 24px; box-shadow: 0 4px 12px rgba(0,0,0,0.3);';
+          warningBanner.textContent = message;
+          
+          // Add close button
+          const closeBtn = document.createElement('button');
+          closeBtn.textContent = '×';
+          closeBtn.style.cssText = 'float: right; background: none; border: none; font-size: 24px; cursor: pointer; margin-left: 12px; color: inherit;';
+          closeBtn.onclick = () => {
+            warningBanner.remove();
+            warningShown = false;
+          };
+          warningBanner.appendChild(closeBtn);
+          
+          document.body.appendChild(warningBanner);
+        }
+
+        function hideWarning() {
+          const warning = document.getElementById('sessionWarning');
+          if (warning) {
+            warning.remove();
+          }
+        }
+
+        function resetTimers() {
+          if (warningTimeout) clearTimeout(warningTimeout);
+          if (logoutTimeout) clearTimeout(logoutTimeout);
+          
+          const idleTime = Date.now() - lastActivityTime;
+          const timeUntilWarning = Math.max(0, SESSION_LIFETIME_MS - WARNING_THRESHOLD_MS - idleTime);
+          const timeUntilLogout = Math.max(0, SESSION_LIFETIME_MS - idleTime);
+          
+          if (timeUntilWarning > 0) {
+            warningTimeout = setTimeout(() => {
+              const remaining = SESSION_LIFETIME_MS - (Date.now() - lastActivityTime);
+              showWarning(remaining);
+            }, timeUntilWarning);
+          }
+          
+          if (timeUntilLogout > 0) {
+            logoutTimeout = setTimeout(() => {
+              performAutoLogout();
+            }, timeUntilLogout);
+          } else {
+            // Already past timeout, logout immediately
+            performAutoLogout();
+          }
+        }
+
+        function checkIdleTime() {
+          // Check client-side idle time only (don't touch server session)
+          const idleTime = Date.now() - lastActivityTime;
+          const timeRemaining = SESSION_LIFETIME_MS - idleTime;
+          
+          if (timeRemaining <= WARNING_THRESHOLD_MS && timeRemaining > 0 && !warningShown) {
+            showWarning(timeRemaining);
+          } else if (timeRemaining <= 0) {
+            performAutoLogout();
+          }
+        }
+
+        async function checkSessionOnActivity() {
+          // Only check server session when user becomes active (this will touch the session)
+          try {
+            const response = await fetch("{{ route('session.check') }}", {
+              method: 'GET',
+              headers: {
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content,
+              },
+              credentials: 'same-origin'
+            });
+
+            if (!response.ok || response.status === 401) {
+              // Session expired or unauthorized
+              performAutoLogout();
+              return;
+            }
+
+            const data = await response.json();
+            
+            if (!data.authenticated) {
+              performAutoLogout();
+              return;
+            }
+            
+            // Session is valid, reset timers since user is active
+            resetTimers();
+          } catch (error) {
+            console.error('Session check failed:', error);
+            // On error, check client-side idle time
+            checkIdleTime();
+          }
+        }
+
+        function performAutoLogout() {
+          hideWarning();
+          
+          // Clear all timers
+          if (sessionCheckInterval) clearInterval(sessionCheckInterval);
+          if (warningTimeout) clearTimeout(warningTimeout);
+          if (logoutTimeout) clearTimeout(logoutTimeout);
+          
+          // Show logout message
+          setBanner('Your session has expired due to inactivity. Redirecting to login...', 'warn');
+          
+          // Submit logout form after a brief delay
+          setTimeout(() => {
+            const logoutForm = document.getElementById('logoutForm');
+            if (logoutForm) {
+              logoutForm.submit();
+            } else {
+              // Fallback: redirect to login
+              window.location.href = "{{ route('login') }}";
+            }
+          }, 2000);
+        }
+
+        // Start session monitoring
+        function startSessionMonitoring() {
+          // Check idle time periodically (doesn't touch server session)
+          sessionCheckInterval = setInterval(checkIdleTime, CHECK_INTERVAL_MS);
+          
+          // Set initial timers based on session lifetime
+          resetTimers();
+        }
+
+        // Start monitoring when page loads
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', startSessionMonitoring);
+        } else {
+          startSessionMonitoring();
+        }
+
+        // Re-check session after any fetch requests (to catch auth failures)
+        const originalFetch = window.fetch;
+        window.fetch = async function(...args) {
+          const response = await originalFetch.apply(this, args);
+          
+          // If we get a 401/403, session might be expired
+          if (response.status === 401 || response.status === 403) {
+            const url = args[0];
+            // Don't logout on session check endpoint itself
+            if (typeof url === 'string' && !url.includes('/session/check')) {
+              performAutoLogout();
+            }
+          }
+          
+          return response;
+        };
+      })();
     </script>
   </body>
  </html>

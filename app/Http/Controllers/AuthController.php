@@ -45,6 +45,27 @@ class AuthController extends Controller
         return redirect()->route('login');
     }
 
+    public function checkSession(Request $request)
+    {
+        // Note: This endpoint will touch the session (Laravel middleware does this automatically)
+        // So we only call this when user activity is detected, not on a timer
+        if (Auth::check()) {
+            $sessionLifetime = config('session.lifetime', 15);
+            
+            return response()->json([
+                'authenticated' => true,
+                'session_lifetime' => $sessionLifetime * 60, // in seconds
+                'message' => 'Session is active',
+            ]);
+        }
+        
+        return response()->json([
+            'authenticated' => false,
+            'time_remaining' => 0,
+            'message' => 'Session expired',
+        ], 401);
+    }
+
     public function register(Request $request)
     {
         $validated = $request->validate([

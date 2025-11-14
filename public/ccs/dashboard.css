@@ -1,14 +1,16 @@
 :root {
-    --blue: #3b82f6; /* brand blue */
+    --blue: #2563eb; /* trust blue - more professional for safety */
     --blue-700: #1d4ed8;
     --blue-900: #1e3a8a;
     --ink: #0f172a; /* slate-900 */
     --muted: #64748b; /* slate-500 */
     --bg: #f8fafc; /* light blue-gray background */
     --white: #ffffff;
-    --danger: #ef4444;
-    --success: #22c55e;
-    --warn: #f59e0b;
+    --danger: #dc2626; /* stronger red for alerts */
+    --success: #16a34a; /* safety green */
+    --warn: #ea580c; /* amber for warnings */
+    --safety-blue: #1e40af; /* deeper blue for safety elements */
+    --trust-green: #059669; /* trust/safety green */
     --radius: 16px;
     --shadow: 0 10px 30px rgba(2, 8, 23, 0.08);
 }
@@ -194,14 +196,16 @@ main {
     gap: 10px;
 }
 .banner.success {
-    background: #def7ec;
-    border-color: #b7efda;
-    color: #064e3b;
+    background: #dcfce7;
+    border-color: #bbf7d0;
+    color: #166534;
+    border-left: 4px solid var(--trust-green);
 }
 .banner.warn {
-    background: #fff7ed;
-    border-color: #fed7aa;
-    color: #7c2d12;
+    background: #fef3c7;
+    border-color: #fde68a;
+    color: #92400e;
+    border-left: 4px solid var(--warn);
 }
 
 .list {
@@ -235,14 +239,109 @@ main {
     color: var(--muted);
 }
 
+.users-layout {
+    align-items: stretch;
+}
+.title-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+.chip.badge {
+    background: #eef2ff;
+    border-color: #c7d2fe;
+    color: var(--blue-900);
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+.user-card {
+    cursor: pointer;
+    transition: border 0.2s, background 0.2s;
+}
+.user-card.active {
+    border: 2px solid var(--blue);
+    background: #e0edff;
+}
+.profile-card .dependent-stats {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+    margin-bottom: 12px;
+}
+.profile-card .dependent-stats span {
+    font-size: 12px;
+    color: var(--muted);
+}
+.profile-card .dependent-stats strong {
+    font-size: 26px;
+    display: block;
+}
+.profile-header {
+    display: flex;
+    gap: 16px;
+    align-items: center;
+    margin-bottom: 12px;
+}
+.profile-avatar {
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    background: var(--blue-900);
+    color: #fff;
+    font-weight: 800;
+    font-size: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.profile-name {
+    font-size: 22px;
+    font-weight: 800;
+}
+.profile-meta {
+    font-size: 14px;
+    color: var(--muted);
+}
+.profile-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    margin-bottom: 12px;
+}
+.profile-grid div {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 10px 12px;
+}
+.profile-grid span {
+    display: block;
+    font-size: 12px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+.profile-grid strong {
+    display: block;
+    font-size: 16px;
+    margin-top: 4px;
+}
+.profile-note {
+    margin: 12px 0;
+    color: var(--muted);
+    font-size: 14px;
+    line-height: 1.4;
+}
+
 .map {
     background: linear-gradient(180deg, #f1f5f9, #e2e8f0);
     border: 1px solid #cbd5e1;
     border-radius: 14px;
     height: 380px;
-    display: grid;
-    place-items: center;
     position: relative;
+    overflow: hidden;
 }
 .coords {
     position: absolute;
@@ -301,13 +400,15 @@ select {
 }
 .tag.success {
     border-color: #bbf7d0;
-    background: #ecfdf5;
-    color: #065f46;
+    background: #dcfce7;
+    color: #166534;
+    font-weight: 600;
 }
 .tag.fail {
     border-color: #fecaca;
     background: #fef2f2;
-    color: #7f1d1d;
+    color: #dc2626;
+    font-weight: 600;
 }
 
 /* Modal */
@@ -336,6 +437,10 @@ select {
         grid-template-columns: 1fr;
     }
     .row.cols-3 {
+        grid-template-columns: 1fr;
+    }
+    .profile-grid,
+    .profile-card .dependent-stats {
         grid-template-columns: 1fr;
     }
 }

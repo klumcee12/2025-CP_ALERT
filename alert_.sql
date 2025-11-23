@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1:3309
--- Generation Time: Sep 24, 2025 at 06:43 PM
+-- Generation Time: Nov 23, 2025 at 03:20 PM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -80,7 +80,9 @@ CREATE TABLE `children` (
 --
 
 INSERT INTO `children` (`id`, `user_id`, `name`, `category`, `device_id`, `sim_number`, `signal_strength`, `battery_percent`, `last_seen_at`, `last_lat`, `last_lng`, `created_at`, `updated_at`) VALUES
-(1, 21, 'asd', 'regular', 'asdas', '09090909', 0, 0, NULL, NULL, NULL, '2025-09-24 08:41:09', '2025-09-24 08:41:09');
+(2, 22, 'dasdas', 'child_with_disability', 'asdasd', NULL, 0, 0, NULL, NULL, NULL, '2025-11-05 09:55:11', '2025-11-05 09:55:11'),
+(4, 22, 'lusia solis', 'regular', 'asdas', NULL, 0, 0, NULL, NULL, NULL, '2025-11-14 00:11:20', '2025-11-14 00:11:20'),
+(5, 22, 'jason pogi', 'regular', 'devicenumber1', '09261855655', 0, 0, NULL, NULL, NULL, '2025-11-14 00:18:29', '2025-11-14 00:18:29');
 
 -- --------------------------------------------------------
 
@@ -227,7 +229,9 @@ CREATE TABLE `sessions` (
 --
 
 INSERT INTO `sessions` (`id`, `user_id`, `ip_address`, `user_agent`, `payload`, `last_activity`) VALUES
-('EWEN9HlFIv3rSOJ1kVlTQWDKUDnzjKFuPXBrqz5Z', 21, '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36 Edg/140.0.0.0', 'YTo0OntzOjY6Il90b2tlbiI7czo0MDoiYjBQOW1uaElUN1lvRkxBV2N0aDhwV3NHeWVMQjNubDBpOHlYS3RuUyI7czo2OiJfZmxhc2giO2E6Mjp7czozOiJvbGQiO2E6MDp7fXM6MzoibmV3IjthOjA6e319czo5OiJfcHJldmlvdXMiO2E6MTp7czozOiJ1cmwiO3M6NDY6Imh0dHA6Ly8xMjcuMC4wLjE6ODAwMC9kYXNoYm9hcmQvcHJlc2VuY2UtY2FsbHMiO31zOjUwOiJsb2dpbl93ZWJfNTliYTM2YWRkYzJiMmY5NDAxNTgwZjAxNGM3ZjU4ZWE0ZTMwOTg5ZCI7aToyMTt9', 1758732141);
+('0KragCAtmDKysnhBBIkJgbrXF1PvVcb0raYD1pYa', NULL, '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0', 'YTozOntzOjY6Il90b2tlbiI7czo0MDoiRU1pRUtiQkNubmE1cVQ3NHhBMTNrOWFyenYzZzMxVTNJdnVORDB1RiI7czo5OiJfcHJldmlvdXMiO2E6MTp7czozOiJ1cmwiO3M6NDU6Imh0dHA6Ly8xMjcuMC4wLjE6ODAwMC9kYXNoYm9hcmQvbG9jYXRpb24tbG9ncyI7fXM6NjoiX2ZsYXNoIjthOjI6e3M6Mzoib2xkIjthOjA6e31zOjM6Im5ldyI7YTowOnt9fX0=', 1763138939),
+('BckY7WqxzXXKvqw1RInjeGwPlRlpzwhln79UJmKR', 22, '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0', 'YTo0OntzOjY6Il90b2tlbiI7czo0MDoiREhhb2dmRGlGZm1kRkVyZktvTXR2TEFvWTFRazVFU08ya3VHajFRVCI7czo5OiJfcHJldmlvdXMiO2E6MTp7czozOiJ1cmwiO3M6Mjk6Imh0dHA6Ly8xMjcuMC4wLjE6ODAwMC9wcm9maWxlIjt9czo2OiJfZmxhc2giO2E6Mjp7czozOiJvbGQiO2E6MDp7fXM6MzoibmV3IjthOjA6e319czo1MDoibG9naW5fd2ViXzU5YmEzNmFkZGMyYjJmOTQwMTU4MGYwMTRjN2Y1OGVhNGUzMDk4OWQiO2k6MjI7fQ==', 1763907605),
+('zVTvkZ1qj2CLZfmHNRzd7yfOgUkJhtrVLrkir5Nz', NULL, '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0', 'YTozOntzOjY6Il90b2tlbiI7czo0MDoibGNWbld4YUZPbnJxRjNveENNWTM2amwxSlhQbjd3N1gxOGVFemdSWSI7czo5OiJfcHJldmlvdXMiO2E6MTp7czozOiJ1cmwiO3M6NDY6Imh0dHA6Ly8xMjcuMC4wLjE6ODAwMC9kYXNoYm9hcmQvcHJlc2VuY2UtY2FsbHMiO31zOjY6Il9mbGFzaCI7YToyOntzOjM6Im9sZCI7YTowOnt9czozOiJuZXciO2E6MDp7fX19', 1763138943);
 
 -- --------------------------------------------------------
 
@@ -257,7 +261,7 @@ INSERT INTO `users` (`id`, `name`, `middle_name`, `email`, `email_verified_at`, 
 (8, 'test test1', '', 'vinczarj@gmail.com', '2025-09-01 07:08:43', '$2y$12$oL2VcZLXRcot2NmZ4JIsVeovmXi019CiPjBZsC5cFJx0Z3DjnGLk2', NULL, '2025-09-15 23:02:23', '2025-09-15 23:02:23'),
 (10, 'test test middle test last', 'test middle', 'eh202201432@wmsu.edu.ph', NULL, '$2y$12$Q7XRmXMuchqYQj4F/Q3ZL.cuHOEYUrT8bwRSD/zNl2wXS0DLMs/be', NULL, '2025-09-24 08:04:45', '2025-09-24 08:04:45'),
 (13, 'asdasd asdasd asdasd', 'asdasd', 'corpuzasiul1@gmail.com', NULL, '$2y$12$u549IOyKuxMD5F6beieEIe8VeibQaE7aSMYV94mjOPy5Bxq.wekfm', NULL, '2025-09-24 08:18:20', '2025-09-24 08:18:20'),
-(21, 'hello world hello', 'world', 'solis2003asiul@gmail.com', '2025-09-24 08:35:50', '$2y$12$CCDCwKcZXhBYUfW.AYDQqOHUe3VSKrhel3XUnkpQ16bad58ORdi72', NULL, '2025-09-24 08:35:35', '2025-09-24 08:35:50');
+(22, 'hello world hello', 'world', 'solis2003asiul@gmail.com', '2025-10-27 16:51:33', '$2y$12$z8EEjWuni07sMaW4uYVmEuJrTQvt6i25fHWCL.EqYrzQEIITM2mgW', NULL, '2025-10-27 16:51:15', '2025-11-14 05:01:43');
 
 --
 -- Indexes for dumped tables
@@ -352,7 +356,7 @@ ALTER TABLE `users`
 -- AUTO_INCREMENT for table `children`
 --
 ALTER TABLE `children`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
 
 --
 -- AUTO_INCREMENT for table `failed_jobs`
@@ -388,7 +392,7 @@ ALTER TABLE `presence_calls`
 -- AUTO_INCREMENT for table `users`
 --
 ALTER TABLE `users`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=22;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=23;
 
 --
 -- Constraints for dumped tables

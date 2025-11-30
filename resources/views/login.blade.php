@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>ALERT+ Login</title>
    <link rel="stylesheet" href="{{ asset('ccs/login.css') }}">
+   <script src="https://accounts.google.com/gsi/client" async defer></script>
   </head>
   <body>
     <div class="auth-container">
@@ -50,7 +51,7 @@
           </div>
 
           <div class="form-group" style="text-align: right">
-            <a href="#" style="font-size: 14px; color: var(--teal)">Forgot password?</a>
+            <a href="#" style="font-size: 14px; color: var(--blue)">Forgot password?</a>
           </div>
 
           <button type="submit" class="btn">Sign In</button>
@@ -60,10 +61,27 @@
           <span>or continue with</span>
         </div>
 
-        <button class="social-btn" onclick="socialLogin('google')">
-          <span>🔍</span>
-          Continue with Google
-        </button>
+        @if(config('services.google.client_id'))
+        <div id="g_id_onload"
+             data-client_id="{{ config('services.google.client_id') }}"
+             data-context="signin"
+             data-ux_mode="popup"
+             data-callback="handleGoogleSignIn"
+             data-auto_prompt="true">
+        </div>
+        <div class="g_id_signin"
+             data-type="standard"
+             data-shape="rectangular"
+             data-theme="outline"
+             data-text="signin_with"
+             data-size="large"
+             data-logo_alignment="left">
+        </div>
+        @else
+        <div style="padding: 12px; background: #fef2f2; border: 1px solid #fecaca; border-radius: 12px; color: #7f1d1d; margin-bottom: 12px; font-size: 14px;">
+          Google Sign-In is not configured. Please set GOOGLE_CLIENT_ID in your .env file.
+        </div>
+        @endif
 
         <button
           class="social-btn"
@@ -119,12 +137,48 @@
         return emailRegex.test(email);
       }
 
+      function handleGoogleSignIn(response) {
+        if (response.credential) {
+          // Send the credential to the server
+          fetch('{{ route("google.token") }}', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-CSRF-TOKEN': '{{ csrf_token() }}'
+            },
+            body: JSON.stringify({
+              credential: response.credential
+            })
+          })
+          .then(res => res.json())
+          .then(data => {
+            if (data.success) {
+              window.location.href = data.redirect;
+            } else {
+              showMessage(data.error || 'Google sign-in failed', 'error');
+            }
+          })
+          .catch(error => {
+            console.error('Error:', error);
+            showMessage('An error occurred during sign-in', 'error');
+          });
+        }
+      }
+
       function socialLogin(provider) {
-        showMessage(`Connecting to ${provider}...`, "success");
-        // In a real app, this would handle OAuth flow
-        setTimeout(() => {
-          showMessage(`${provider} login not implemented in demo.`, "error");
-        }, 1000);
+        if (provider === 'google') {
+          // Trigger Google Sign-In prompt manually
+          if (window.google && window.google.accounts && window.google.accounts.id) {
+            window.google.accounts.id.prompt();
+          } else {
+            showMessage('Google Sign-In is not available. Please refresh the page.', 'error');
+          }
+        } else {
+          showMessage(`Connecting to ${provider}...`, "success");
+          setTimeout(() => {
+            showMessage(`${provider} login not implemented.`, "error");
+          }, 1000);
+        }
       }
     </script>
   </body>

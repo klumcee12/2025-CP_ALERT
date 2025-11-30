@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Hash;
 use App\Models\User;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Http;
 
 class AuthController extends Controller
 {
@@ -181,6 +182,170 @@ class AuthController extends Controller
         return response()->json([
             'ok' => true,
             'message' => 'Password updated successfully',
+        ]);
+    }
+
+    public function redirectToGoogle()
+    {
+        $clientId = config('services.google.client_id');
+        $redirectUri = config('services.google.redirect') ?: url('/auth/google/callback');
+        
+        if (!$clientId) {
+            return redirect()->route('login')->withErrors(['error' => 'Google OAuth is not configured. Please set GOOGLE_CLIENT_ID in your .env file.']);
+        }
+        
+        // Ensure redirect URI doesn't have trailing slash
+        $redirectUri = rtrim($redirectUri, '/');
+        
+        $scope = 'openid email profile';
+        
+        $authUrl = 'https://accounts.google.com/o/oauth2/v2/auth?' . http_build_query([
+            'client_id' => $clientId,
+            'redirect_uri' => $redirectUri,
+            'response_type' => 'code',
+            'scope' => $scope,
+            'access_type' => 'online',
+            'prompt' => 'select_account',
+        ]);
+
+        return redirect($authUrl);
+    }
+
+    public function handleGoogleCallback(Request $request)
+    {
+        $code = $request->get('code');
+        $error = $request->get('error');
+        
+        if ($error) {
+            return redirect()->route('login')->withErrors(['error' => 'Google authentication failed: ' . $error]);
+        }
+        
+        if (!$code) {
+            return redirect()->route('login')->withErrors(['error' => 'Google authentication failed. No authorization code received.']);
+        }
+
+        $clientId = config('services.google.client_id');
+        $clientSecret = config('services.google.client_secret');
+        $redirectUri = config('services.google.redirect') ?: url('/auth/google/callback');
+        
+        // Ensure redirect URI doesn't have trailing slash
+        $redirectUri = rtrim($redirectUri, '/');
+        
+        if (!$clientId || !$clientSecret) {
+            return redirect()->route('login')->withErrors(['error' => 'Google OAuth is not properly configured.']);
+        }
+
+        // Exchange code for access token
+        $tokenResponse = Http::asForm()->post('https://oauth2.googleapis.com/token', [
+            'client_id' => $clientId,
+            'client_secret' => $clientSecret,
+            'code' => $code,
+            'grant_type' => 'authorization_code',
+            'redirect_uri' => $redirectUri,
+        ]);
+
+        if (!$tokenResponse->successful()) {
+            return redirect()->route('login')->withErrors(['error' => 'Failed to authenticate with Google.']);
+        }
+
+        $tokenData = $tokenResponse->json();
+        $accessToken = $tokenData['access_token'];
+
+        // Get user info from Google
+        $userResponse = Http::withToken($accessToken)->get('https://www.googleapis.com/oauth2/v2/userinfo');
+        
+        if (!$userResponse->successful()) {
+            return redirect()->route('login')->withErrors(['error' => 'Failed to retrieve user information from Google.']);
+        }
+
+        $googleUser = $userResponse->json();
+
+        // Find or create user
+        $user = User::where('google_id', $googleUser['id'])
+            ->orWhere('email', $googleUser['email'])
+            ->first();
+
+        if ($user) {
+            // Update existing user with Google ID if not set
+            if (!$user->google_id) {
+                $user->google_id = $googleUser['id'];
+                $user->save();
+            }
+        } else {
+            // Create new user
+            $user = User::create([
+                'name' => $googleUser['name'] ?? 'User',
+                'email' => $googleUser['email'],
+                'google_id' => $googleUser['id'],
+                'email_verified_at' => now(), // Google emails are verified
+                'password' => null, // No password for Google users
+            ]);
+        }
+
+        // Log the user in
+        Auth::login($user);
+        $request->session()->regenerate();
+
+        return redirect()->intended(route('dashboard'));
+    }
+
+    public function handleGoogleToken(Request $request)
+    {
+        $request->validate([
+            'credential' => 'required|string',
+        ]);
+
+        $credential = $request->input('credential');
+        
+        // Decode the JWT token (Google One Tap)
+        $parts = explode('.', $credential);
+        if (count($parts) !== 3) {
+            return response()->json(['error' => 'Invalid token'], 400);
+        }
+
+        $payload = json_decode(base64_decode(str_replace(['-', '_'], ['+', '/'], $parts[1])), true);
+        
+        if (!$payload || !isset($payload['sub']) || !isset($payload['email'])) {
+            return response()->json(['error' => 'Invalid token payload'], 400);
+        }
+
+        $googleId = $payload['sub'];
+        $email = $payload['email'];
+        $name = $payload['name'] ?? 'User';
+        $emailVerified = isset($payload['email_verified']) && $payload['email_verified'];
+
+        // Find or create user
+        $user = User::where('google_id', $googleId)
+            ->orWhere('email', $email)
+            ->first();
+
+        if ($user) {
+            // Update existing user with Google ID if not set
+            if (!$user->google_id) {
+                $user->google_id = $googleId;
+                if ($emailVerified && !$user->email_verified_at) {
+                    $user->email_verified_at = now();
+                }
+                $user->save();
+            }
+        } else {
+            // Create new user
+            $user = User::create([
+                'name' => $name,
+                'email' => $email,
+                'google_id' => $googleId,
+                'email_verified_at' => $emailVerified ? now() : null,
+                'password' => null,
+            ]);
+        }
+
+        // Log the user in
+        Auth::login($user);
+        $request->session()->regenerate();
+
+        return response()->json([
+            'success' => true,
+            'redirect' => route('dashboard'),
         ]);
     }
 }

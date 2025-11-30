@@ -83,15 +83,6 @@
         </div>
         @endif
 
-        <button
-          class="social-btn"
-          onclick="socialLogin('apple')"
-          style="margin-top: 12px"
-        >
-          <span>🍎</span>
-          Continue with Apple
-        </button>
-
         <div class="footer">
           Don't have an account? <a href="{{ route('register') }}">Sign up</a>
         </div>

@@ -107,6 +107,20 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | IoT Integration Settings
+    |--------------------------------------------------------------------------
+    |
+    | A simple shared secret used by physical IoT devices when calling your
+    | /api IoT endpoints. Set IOT_SHARED_SECRET in your .env file and send
+    | it from the device via the "X-IOT-KEY" HTTP header. When the env
+    | value is empty, the check is skipped (useful for local development).
+    |
+    */
+
+    'iot_shared_secret' => env('IOT_SHARED_SECRET'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Maintenance Mode Driver
     |--------------------------------------------------------------------------
     |

@@ -937,9 +937,56 @@
         }, 1200);
       }
 
-      function quickPing(id) {
+      // Quick Ping from profile / user card:
+      // sends a simple Presence Call with sensible defaults so the device can play a sound.
+      async function quickPing(id) {
         selectUser(id);
-        ping();
+        const u = users.find((x) => x.id === id);
+        if (!u) {
+          setBanner("Select a dependent first.", "warn");
+          return;
+        }
+
+        // Defaults for a quick, gentle ping
+        const seq = "gentle";
+        const strength = 3;
+        const dur = 10;
+        const dnd = "respect";
+
+        try {
+          const res = await fetch("{{ route('dashboard.sendPresenceCall') }}", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "X-CSRF-TOKEN": document.querySelector('meta[name=csrf-token]').content,
+              "Accept": "application/json",
+            },
+            body: JSON.stringify({
+              child_id: id,
+              sequence: seq,
+              strength,
+              duration: dur,
+              dnd,
+            }),
+          });
+          const data = await res.json();
+          const ok = !!data.ok;
+          callLogs.unshift({
+            time: Date.now(),
+            user: u.name,
+            seq,
+            status: ok ? "sent" : "failed",
+          });
+          renderCallLogs();
+          setBanner(
+            ok
+              ? `Quick Ping sent to ${u.name}.`
+              : "Quick Ping failed — check connection.",
+            ok ? "success" : "warn"
+          );
+        } catch (e) {
+          setBanner("Quick Ping failed — network error.", "warn");
+        }
       }
 
       async function sendPresenceCall() {

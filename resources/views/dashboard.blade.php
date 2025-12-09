@@ -31,7 +31,7 @@
           role="status"
           aria-live="polite"
         >
-          Ready — GSM/SMS mode
+          Ready — GSM/SMS mode • Real-time updates active
         </div>
         <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark mode">
           <span id="themeIcon">🌙</span>
@@ -737,83 +737,160 @@
         const mapElement = el("#map");
         if (!mapElement) return;
         
+        // Check if Google Maps API is loaded
+        if (typeof google === 'undefined' || typeof google.maps === 'undefined') {
+          console.error('Google Maps API is not loaded. Please check your API key configuration.');
+          el("#coords").textContent = "Map unavailable - API key not configured";
+          return;
+        }
+        
         // Default center (you can change this to your preferred location)
         const defaultCenter = { lat: 14.5995, lng: 120.9842 }; // Manila, Philippines
         
-        map = new google.maps.Map(mapElement, {
-          zoom: 15,
-          center: defaultCenter,
-          mapTypeId: google.maps.MapTypeId.ROADMAP,
-          styles: [
-            {
-              featureType: "poi",
-              elementType: "labels",
-              stylers: [{ visibility: "off" }]
-            }
-          ],
-          mapTypeControl: true,
-          streetViewControl: false,
-          fullscreenControl: true,
-          zoomControl: true
-        });
-        
-        // Add click listener for map
-        map.addListener('click', function(event) {
-          console.log('Map clicked at:', event.latLng.lat(), event.latLng.lng());
-        });
+        try {
+          map = new google.maps.Map(mapElement, {
+            zoom: 15,
+            center: defaultCenter,
+            mapTypeId: google.maps.MapTypeId.ROADMAP,
+            styles: [
+              {
+                featureType: "poi",
+                elementType: "labels",
+                stylers: [{ visibility: "off" }]
+              }
+            ],
+            mapTypeControl: true,
+            streetViewControl: false,
+            fullscreenControl: true,
+            zoomControl: true
+          });
+          
+          // Add click listener for map
+          map.addListener('click', function(event) {
+            console.log('Map clicked at:', event.latLng.lat(), event.latLng.lng());
+          });
+        } catch (error) {
+          console.error('Error initializing map:', error);
+          el("#coords").textContent = "Map initialization failed";
+        }
       }
       
       // ---- Map markers ----
       function addOrUpdateMarker(user) {
         if (!map || !user || !user.coords) return;
         
-        const position = { lat: user.coords.lat, lng: user.coords.lng };
+        // Ensure coordinates are numbers
+        const lat = parseFloat(user.coords.lat);
+        const lng = parseFloat(user.coords.lng);
         
-        // Remove existing marker for this user
+        // Validate coordinates
+        if (isNaN(lat) || isNaN(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+          console.error('Invalid coordinates:', user.coords);
+          return;
+        }
+        
+        const position = { lat: lat, lng: lng };
+        
+        // Remove existing marker and label for this user
         if (markers[user.id]) {
           markers[user.id].setMap(null);
         }
+        if (markers[user.id + '_label']) {
+          markers[user.id + '_label'].setMap(null);
+        }
         
-        // Create new marker
+        // Create a more visible pin-style marker
+        const markerIcon = {
+          url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(`
+            <svg width="48" height="64" viewBox="0 0 48 64" xmlns="http://www.w3.org/2000/svg">
+              <!-- Pin shadow -->
+              <ellipse cx="24" cy="58" rx="8" ry="4" fill="#000" opacity="0.2"/>
+              <!-- Pin body -->
+              <path d="M 24 4 C 14 4 6 12 6 22 C 6 32 24 56 24 56 C 24 56 42 32 42 22 C 42 12 34 4 24 4 Z" fill="#dc2626" stroke="#fff" stroke-width="2"/>
+              <!-- Inner circle -->
+              <circle cx="24" cy="22" r="10" fill="#fff"/>
+              <circle cx="24" cy="22" r="7" fill="#dc2626"/>
+              <!-- Initial letter -->
+              <text x="24" y="26" text-anchor="middle" fill="white" font-family="Arial, sans-serif" font-size="14" font-weight="bold">${user.name[0].toUpperCase()}</text>
+            </svg>
+          `),
+          scaledSize: new google.maps.Size(48, 64),
+          anchor: new google.maps.Point(24, 64)
+        };
+        
+        // Create new marker with pin icon
         const marker = new google.maps.Marker({
           position: position,
           map: map,
           title: `${user.name} - Last seen: ${user.lastSeen || 'Unknown'}`,
-          icon: {
-            url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(`
-              <svg width="32" height="32" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
-                <circle cx="16" cy="16" r="12" fill="#2563eb" stroke="#fff" stroke-width="3"/>
-                <text x="16" y="20" text-anchor="middle" fill="white" font-family="Arial" font-size="12" font-weight="bold">${user.name[0]}</text>
-              </svg>
-            `),
-            scaledSize: new google.maps.Size(32, 32),
-            anchor: new google.maps.Point(16, 16)
-          }
+          icon: markerIcon,
+          animation: user.id === activeUserId ? google.maps.Animation.DROP : null,
+          zIndex: user.id === activeUserId ? 1000 : 100
         });
         
-        // Add info window
+        // Create a label marker with the child's name
+        const labelMarker = new google.maps.Marker({
+          position: position,
+          map: map,
+          icon: {
+            url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(`
+              <svg width="120" height="32" viewBox="0 0 120 32" xmlns="http://www.w3.org/2000/svg">
+                <rect x="0" y="0" width="120" height="32" rx="16" fill="#2563eb" opacity="0.9"/>
+                <text x="60" y="20" text-anchor="middle" fill="white" font-family="Arial, sans-serif" font-size="12" font-weight="bold">${user.name}</text>
+              </svg>
+            `),
+            scaledSize: new google.maps.Size(120, 32),
+            anchor: new google.maps.Point(60, 40)
+          },
+          label: {
+            text: user.name,
+            color: 'white',
+            fontSize: '12px',
+            fontWeight: 'bold'
+          },
+          zIndex: user.id === activeUserId ? 1001 : 101
+        });
+        
+        // Add info window with more details
         const infoWindow = new google.maps.InfoWindow({
           content: `
-            <div style="padding: 8px; font-family: Arial, sans-serif;">
-              <h3 style="margin: 0 0 8px 0; color: #2563eb;">${user.name}</h3>
-              <p style="margin: 4px 0; font-size: 14px;"><strong>Device:</strong> ${user.deviceId}</p>
-              <p style="margin: 4px 0; font-size: 14px;"><strong>Last Seen:</strong> ${user.lastSeen || 'Unknown'}</p>
-              <p style="margin: 4px 0; font-size: 14px;"><strong>Signal:</strong> ${user.signal}/5</p>
-              <p style="margin: 4px 0; font-size: 14px;"><strong>Battery:</strong> ${user.battery}%</p>
+            <div style="padding: 12px; font-family: Arial, sans-serif; min-width: 200px;">
+              <h3 style="margin: 0 0 10px 0; color: #dc2626; font-size: 18px;">📍 ${user.name}</h3>
+              <div style="border-top: 1px solid #e5e7eb; padding-top: 8px;">
+                <p style="margin: 6px 0; font-size: 14px;"><strong>Device ID:</strong> ${user.deviceId}</p>
+                <p style="margin: 6px 0; font-size: 14px;"><strong>Last Seen:</strong> ${user.lastSeen || 'Unknown'}</p>
+                <p style="margin: 6px 0; font-size: 14px;"><strong>Signal Strength:</strong> ${user.signal}/5 ${'📶'.repeat(user.signal)}</p>
+                <p style="margin: 6px 0; font-size: 14px;"><strong>Battery:</strong> ${user.battery}% ${user.battery > 50 ? '🔋' : user.battery > 20 ? '🪫' : '⚠️'}</p>
+                <p style="margin: 6px 0; font-size: 12px; color: #6b7280;">Coordinates: ${lat.toFixed(6)}, ${lng.toFixed(6)}</p>
+              </div>
             </div>
           `
         });
         
+        // Open info window on marker click
         marker.addListener('click', function() {
           infoWindow.open(map, marker);
         });
         
+        // Also open info window when label is clicked
+        labelMarker.addListener('click', function() {
+          infoWindow.open(map, marker);
+        });
+        
+        // Store both markers
         markers[user.id] = marker;
+        markers[user.id + '_label'] = labelMarker;
         
         // If this is the active user, center the map and set as current marker
         if (user.id === activeUserId) {
           map.setCenter(position);
+          map.setZoom(16);
           currentMarker = marker;
+          // Pulse animation for active marker
+          marker.setAnimation(google.maps.Animation.BOUNCE);
+          setTimeout(() => {
+            marker.setAnimation(null);
+          }, 2000);
         }
       }
       
@@ -822,12 +899,27 @@
           markers[userId].setMap(null);
           delete markers[userId];
         }
+        // Also remove label marker if it exists
+        if (markers[userId + '_label']) {
+          markers[userId + '_label'].setMap(null);
+          delete markers[userId + '_label'];
+        }
       }
       
       function centerOnUser(userId) {
         const user = users.find(u => u.id === userId);
         if (user && user.coords && map) {
-          const position = { lat: user.coords.lat, lng: user.coords.lng };
+          // Ensure coordinates are numbers
+          const lat = parseFloat(user.coords.lat);
+          const lng = parseFloat(user.coords.lng);
+          
+          if (isNaN(lat) || isNaN(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+            console.error('Invalid coordinates for centering:', user.coords);
+            setBanner('Invalid coordinates. Cannot center map.', 'warn');
+            return;
+          }
+          
+          const position = { lat: lat, lng: lng };
           map.setCenter(position);
           map.setZoom(16);
           
@@ -847,10 +939,21 @@
       function updateMap(u) {
         const c = el("#coords");
         if (u && u.coords) {
-          c.textContent = `Lat ${u.coords.lat.toFixed(5)}, Lng ${u.coords.lng.toFixed(5)} • Last: ${u.lastSeen ?? "—"}`;
+          // Ensure coordinates are numbers and valid
+          const lat = parseFloat(u.coords.lat);
+          const lng = parseFloat(u.coords.lng);
           
-          // Update map marker
-          addOrUpdateMarker(u);
+          if (!isNaN(lat) && !isNaN(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+            c.textContent = `Lat ${lat.toFixed(5)}, Lng ${lng.toFixed(5)} • Last: ${u.lastSeen ?? "—"}`;
+            
+            // Update map marker (only if map is initialized)
+            if (map && typeof google !== 'undefined' && typeof google.maps !== 'undefined') {
+              addOrUpdateMarker(u);
+            }
+          } else {
+            c.textContent = `Invalid coordinates • Last: ${u.lastSeen ?? "—"}`;
+            console.warn('Invalid coordinates for user:', u.id, u.coords);
+          }
         } else {
           c.textContent = "—";
           if (u) {
@@ -928,27 +1031,40 @@
       }
 
       // ---- Actions ----
-      function ping() {
+      async function ping() {
         const u = users.find((x) => x.id === activeUserId);
-        setBanner("Sending location ping via GSM…");
-        // Placeholder: simulate until device integration
-        setTimeout(() => {
-          const ok = Math.random() > 0.1; // 90% success
+        if (!u) {
+          setBanner("Select a dependent first.", "warn");
+          return;
+        }
+        
+        setBanner("Sending location ping request…");
+        
+        try {
+          const res = await fetch("{{ route('dashboard.requestLocationPing') }}", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "X-CSRF-TOKEN": document.querySelector('meta[name=csrf-token]').content,
+              "Accept": "application/json",
+            },
+            body: JSON.stringify({
+              child_id: u.id,
+            }),
+          });
+          
+          const data = await res.json();
+          const ok = !!data.ok;
+          
           if (ok) {
-            if (u.coords) {
-              u.coords.lat += randOffset();
-              u.coords.lng += randOffset();
-            }
-            u.lastSeen = "Just now";
-            updateMap(u);
-            updateStatusbar(u);
-            addLocationLog(u, true);
-            setBanner("Location ping reply received.", "success");
+            setBanner("Location ping sent. Waiting for device response...", "success");
+            // The device will send telemetry, and the dashboard will auto-refresh every 5 seconds
           } else {
-            addLocationLog(u, false);
-            setBanner("Ping failed — weak signal. Try again.", "warn");
+            setBanner("Location ping failed — check connection.", "warn");
           }
-        }, 1200);
+        } catch (e) {
+          setBanner("Location ping failed — network error.", "warn");
+        }
       }
 
       // Quick Ping from profile / user card:
@@ -1054,7 +1170,15 @@
       function openMaps() {
         const u = users.find((x) => x.id === activeUserId);
         if (u && u.coords) {
-          window.open(`https://www.google.com/maps?q=${u.coords.lat},${u.coords.lng}`, "_blank");
+          // Ensure coordinates are numbers
+          const lat = parseFloat(u.coords.lat);
+          const lng = parseFloat(u.coords.lng);
+          
+          if (!isNaN(lat) && !isNaN(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+            window.open(`https://www.google.com/maps?q=${lat},${lng}`, "_blank");
+          } else {
+            setBanner('Invalid coordinates. Cannot open in Google Maps.', 'warn');
+          }
         }
       }
 
@@ -1187,6 +1311,155 @@
 
       // Logout handled by POST form submission above
 
+      // ---- Real-time Data Polling ----
+      let realTimePollInterval = null;
+      let isPolling = false;
+      const POLL_INTERVAL_MS = 5000; // Poll every 5 seconds for real-time updates
+      
+      async function refreshChildrenData() {
+        if (isPolling) return; // Prevent concurrent requests
+        isPolling = true;
+        
+        try {
+          const res = await fetch("{{ route('dashboard.children') }}", { 
+            headers: { Accept: "application/json" },
+            cache: 'no-cache'
+          });
+          const payload = await res.json();
+          const newUsers = payload.data || [];
+          
+          // Check if data has changed
+          let dataChanged = false;
+          if (newUsers.length !== users.length) {
+            dataChanged = true;
+          } else {
+            // Compare each user's data
+            for (let i = 0; i < newUsers.length; i++) {
+              const newUser = newUsers[i];
+              const oldUser = users.find(u => u.id === newUser.id);
+              
+              if (!oldUser) {
+                dataChanged = true;
+                break;
+              }
+              
+              // Check if critical fields changed
+              if (oldUser.battery !== newUser.battery ||
+                  oldUser.signal !== newUser.signal ||
+                  oldUser.lastSeen !== newUser.lastSeen ||
+                  (oldUser.coords?.lat !== newUser.coords?.lat) ||
+                  (oldUser.coords?.lng !== newUser.coords?.lng)) {
+                dataChanged = true;
+                break;
+              }
+            }
+          }
+          
+          if (dataChanged) {
+            // Preserve activeUserId if it still exists
+            const previousActiveId = activeUserId;
+            users = newUsers;
+            
+            // Restore activeUserId if it still exists, otherwise use first user
+            if (users.find(u => u.id === previousActiveId)) {
+              activeUserId = previousActiveId;
+            } else if (users.length > 0) {
+              activeUserId = users[0].id;
+            } else {
+              activeUserId = null;
+            }
+            
+            // Update UI
+            fillUserSelects();
+            renderUserCards();
+            updateDependentStats(users);
+            
+            // Update map and status for active user
+            const activeUser = users.find((u) => u.id === activeUserId);
+            if (activeUser) {
+              updateMap(activeUser);
+              updateStatusbar(activeUser);
+              renderUserProfile();
+            }
+            
+            // Update banner to show real-time updates are working
+            const banner = el("#topBanner");
+            if (banner && !banner.textContent.includes("Real-time")) {
+              const originalText = banner.textContent;
+              banner.textContent = "Real-time updates active — " + originalText;
+              setTimeout(() => {
+                if (banner) banner.textContent = originalText;
+              }, 3000);
+            }
+          }
+        } catch (e) {
+          console.error('Error refreshing children data:', e);
+        } finally {
+          isPolling = false;
+        }
+      }
+      
+      async function refreshLocationLogs() {
+        try {
+          const res = await fetch("{{ route('dashboard.locationLogs') }}", { 
+            headers: { Accept: "application/json" },
+            cache: 'no-cache'
+          });
+          const data = await res.json();
+          const newLogs = data.data || [];
+          
+          // Check if logs have changed (compare first log timestamp)
+          if (newLogs.length > 0 && locationLogs.length > 0) {
+            const latestNewLog = newLogs[0];
+            const latestOldLog = locationLogs[0];
+            if (latestNewLog.time !== latestOldLog.time) {
+              locationLogs = newLogs;
+              renderLocationLogs();
+            }
+          } else if (newLogs.length !== locationLogs.length) {
+            locationLogs = newLogs;
+            renderLocationLogs();
+          }
+        } catch (e) {
+          console.error('Error refreshing location logs:', e);
+        }
+      }
+      
+      function startRealTimePolling() {
+        // Clear any existing interval
+        if (realTimePollInterval) {
+          clearInterval(realTimePollInterval);
+        }
+        
+        // Start polling for real-time updates
+        realTimePollInterval = setInterval(() => {
+          refreshChildrenData();
+          refreshLocationLogs();
+        }, POLL_INTERVAL_MS);
+        
+        console.log('Real-time polling started (every ' + (POLL_INTERVAL_MS / 1000) + ' seconds)');
+      }
+      
+      function stopRealTimePolling() {
+        if (realTimePollInterval) {
+          clearInterval(realTimePollInterval);
+          realTimePollInterval = null;
+          console.log('Real-time polling stopped');
+        }
+      }
+      
+      // Pause polling when page is hidden, resume when visible
+      document.addEventListener('visibilitychange', () => {
+        if (document.hidden) {
+          stopRealTimePolling();
+        } else {
+          startRealTimePolling();
+          // Immediately refresh when page becomes visible
+          refreshChildrenData();
+          refreshLocationLogs();
+        }
+      });
+
       // ---- Init ----
       async function init() {
         // Load children
@@ -1209,8 +1482,24 @@
         renderUserProfile();
         updateDependentStats(users);
         
-        // Initialize map
-        initMap();
+        // Initialize map (wait for Google Maps API if needed)
+        if (typeof google !== 'undefined' && typeof google.maps !== 'undefined') {
+          initMap();
+        } else {
+          // Wait for Google Maps API to load
+          let attempts = 0;
+          const checkGoogleMaps = setInterval(() => {
+            attempts++;
+            if (typeof google !== 'undefined' && typeof google.maps !== 'undefined') {
+              clearInterval(checkGoogleMaps);
+              initMap();
+            } else if (attempts > 50) { // 5 seconds timeout
+              clearInterval(checkGoogleMaps);
+              console.error('Google Maps API failed to load after 5 seconds');
+              el("#coords").textContent = "Map unavailable - API not loaded";
+            }
+          }, 100);
+        }
         
         // Update map and status after map is initialized
         setTimeout(() => {
@@ -1220,7 +1509,7 @@
           updateStatusbar(
             initialUser || { signal: 0, battery: 0, lastSeen: "—" }
           );
-        }, 100);
+        }, 200);
 
         // Load logs
         try {
@@ -1239,6 +1528,14 @@
 
         renderLocationLogs();
         renderCallLogs();
+        
+        // Start real-time polling after initial load
+        startRealTimePolling();
+        
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', () => {
+          stopRealTimePolling();
+        });
 
         // Events
         el("#userSelect").addEventListener("change", (e) => {
@@ -1249,13 +1546,16 @@
           renderUserProfile();
         });
         el("#btnPing").addEventListener("click", ping);
-        el("#btnRefresh").addEventListener("click", () => {
+        el("#btnRefresh").addEventListener("click", async () => {
+          setBanner("Refreshing data...", "success");
+          await refreshChildrenData();
+          await refreshLocationLogs();
           const u = users.find((x) => x.id === activeUserId);
           updateMap(u);
           if (u && u.coords) {
             centerOnUser(activeUserId);
           }
-          setBanner("Map refreshed.", "success");
+          setBanner("Data refreshed.", "success");
         });
         el("#btnExport").addEventListener("click", exportCSV);
         el("#filterRange").addEventListener("change", renderLocationLogs);

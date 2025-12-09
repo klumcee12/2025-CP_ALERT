@@ -24,6 +24,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/dashboard/location-logs', [DashboardController::class, 'locationLogs'])->name('dashboard.locationLogs');
     Route::get('/dashboard/presence-calls', [DashboardController::class, 'presenceCalls'])->name('dashboard.presenceCalls');
     Route::post('/dashboard/send-presence-call', [DashboardController::class, 'sendPresenceCall'])->name('dashboard.sendPresenceCall');
+    Route::post('/dashboard/request-location-ping', [DashboardController::class, 'requestLocationPing'])->name('dashboard.requestLocationPing');
     Route::post('/dashboard/children', [DashboardController::class, 'createChild'])->name('dashboard.createChild');
     Route::put('/dashboard/children/{id}', [DashboardController::class, 'updateChild'])->name('dashboard.updateChild');
     Route::delete('/dashboard/children/{id}', [DashboardController::class, 'deleteChild'])->name('dashboard.deleteChild');

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Child;
 use App\Models\PresenceCall;
 use App\Models\LocationLog;
+use App\Models\LocationPingRequest;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -175,9 +176,89 @@ class IoTController extends Controller
             ]);
         }
 
+        // Check if there's a pending location ping request
+        $pingRequest = LocationPingRequest::where('child_id', $child->id)
+            ->where('status', 'pending')
+            ->where('requested_at', '>', now()->subMinutes(5)) // Only recent requests (within 5 minutes)
+            ->first();
+        
+        if ($pingRequest && !empty($validated['lat']) && !empty($validated['lng'])) {
+            // Mark request as fulfilled
+            $pingRequest->update([
+                'fulfilled_at' => $now,
+                'status' => 'fulfilled',
+            ]);
+        }
+
         return response()->json([
             'ok' => true,
             'time' => $now->toIso8601String(),
+        ]);
+    }
+
+    /**
+     * Device polls this endpoint to check if there is a location ping request.
+     * When a request is found, device should immediately send telemetry with GPS data.
+     *
+     * Request JSON:
+     * {
+     *   "device_id": "ABC123",
+     *   "last_id": 10   // optional: last location_ping_request id the device handled
+     * }
+     *
+     * Response JSON:
+     * { "request": null }  // nothing new
+     * or
+     * {
+     *   "request": {
+     *     "id": 15,
+     *     "requested_at": "2025-12-09T10:30:00+00:00"
+     *   }
+     * }
+     */
+    public function pollLocationRequest(Request $request)
+    {
+        // Optional shared-secret protection for physical devices
+        $expectedKey = config('app.iot_shared_secret');
+        if (! empty($expectedKey) && $request->header('X-IOT-KEY') !== $expectedKey) {
+            return response()->json(['error' => 'unauthorized'], 401);
+        }
+
+        $validated = $request->validate([
+            'device_id' => ['required', 'string'],
+            'last_id'   => ['nullable', 'integer'],
+        ]);
+
+        // Find the child record that corresponds to this device
+        $child = Child::where('device_id', $validated['device_id'])->first();
+
+        if (! $child) {
+            return response()->json([
+                'request' => null,
+                'error' => 'unknown_device',
+            ], 404);
+        }
+
+        $query = LocationPingRequest::where('child_id', $child->id)
+            ->where('status', 'pending')
+            ->where('requested_at', '>', now()->subMinutes(5)) // Only recent requests (within 5 minutes)
+            ->orderByDesc('id');
+
+        if (! empty($validated['last_id'])) {
+            $query->where('id', '>', $validated['last_id']);
+        }
+
+        $pingRequest = $query->first();
+
+        if (! $pingRequest) {
+            return response()->json(['request' => null]);
+        }
+
+        return response()->json([
+            'request' => [
+                'id' => $pingRequest->id,
+                'requested_at' => $pingRequest->requested_at->toIso8601String(),
+            ],
         ]);
     }
 }

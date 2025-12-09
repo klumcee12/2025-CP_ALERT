@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Child;
 use App\Models\LocationLog;
 use App\Models\PresenceCall;
+use App\Models\LocationPingRequest;
 use App\Models\User;
 use App\Rules\DeviceIdFormat;
 use App\Rules\SimNumberFormat;
@@ -106,6 +107,51 @@ class DashboardController extends Controller
                 ];
             })
         ]);
+    }
+
+    public function requestLocationPing(Request $request)
+    {
+        try {
+            $validated = $request->validate([
+                'child_id' => ['required', 'integer', 'exists:children,id'],
+            ]);
+
+            $child = Child::where('user_id', Auth::id())->findOrFail($validated['child_id']);
+
+            // Create location ping request
+            $pingRequest = LocationPingRequest::create([
+                'child_id' => $child->id,
+                'requested_at' => now(),
+                'status' => 'pending',
+            ]);
+
+            Log::info('Location ping requested', [
+                'user_id' => Auth::id(),
+                'child_id' => $child->id,
+                'ping_request_id' => $pingRequest->id,
+            ]);
+
+            return response()->json([
+                'ok' => true,
+                'id' => $pingRequest->id,
+                'message' => 'Location ping request sent. Device will respond shortly.',
+            ]);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return response()->json([
+                'ok' => false,
+                'message' => 'Dependent not found.',
+            ], 404);
+        } catch (\Exception $e) {
+            Log::error('Location ping request failed', [
+                'user_id' => Auth::id(),
+                'error' => $e->getMessage(),
+            ]);
+            
+            return response()->json([
+                'ok' => false,
+                'message' => 'Failed to send location ping request.',
+            ], 500);
+        }
     }
 
     public function sendPresenceCall(Request $request)

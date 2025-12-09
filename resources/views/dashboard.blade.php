@@ -400,10 +400,10 @@
       </main>
     </div>
 
-    <!-- Add Dependent Modal -->
+    <!-- Add/Edit Dependent Modal -->
     <div class="modal-backdrop" id="modalBackdrop">
       <div class="modal">
-        <h3 class="title">Add Dependent</h3>
+        <h3 class="title" id="modalTitle">Add Dependent</h3>
         <div class="grid-2">
           <div>
             <label for="depName">Full Name</label>
@@ -434,6 +434,18 @@
         <div class="toolbar" style="margin-top: 12px">
           <button class="btn" id="btnSaveDependent">Save</button>
           <button class="btn secondary" id="btnModalDone">Close</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div class="modal-backdrop" id="deleteModalBackdrop" style="display: none;">
+      <div class="modal">
+        <h3 class="title">Delete Dependent</h3>
+        <p id="deleteConfirmText">Are you sure you want to delete this dependent? This action cannot be undone.</p>
+        <div class="toolbar" style="margin-top: 12px">
+          <button class="btn danger" id="btnConfirmDelete">Delete</button>
+          <button class="btn secondary" id="btnCancelDelete">Cancel</button>
         </div>
       </div>
     </div>
@@ -710,9 +722,11 @@
         <div class="meta">Device ${u.deviceId || "—"} • SIM ${u.sim || "—"}</div>
         <div class="statusbar" style="margin-top:6px">${statusChips(u)}</div>
       </div>
-      <div class="toolbar"><button class="btn secondary" onclick="quickPing('${
-        u.id
-      }')">Quick Ping</button></div>
+      <div class="toolbar" style="flex-direction: column; gap: 6px;">
+        <button class="btn secondary" onclick="event.stopPropagation(); quickPing('${u.id}')">Quick Ping</button>
+        <button class="btn ghost" onclick="event.stopPropagation(); editDependent('${u.id}')" style="font-size: 0.85em;">✏️ Edit</button>
+        <button class="btn ghost danger" onclick="event.stopPropagation(); confirmDeleteDependent('${u.id}')" style="font-size: 0.85em;">🗑️ Delete</button>
+      </div>
     </div>`
           )
           .join("");
@@ -1045,11 +1059,130 @@
       }
 
       // ---- Modal ----
+      let editingChildId = null;
+      
       function openModal() {
+        editingChildId = null;
+        el("#modalTitle").textContent = "Add Dependent";
+        el("#depName").value = "";
+        el("#depCategory").value = "normal";
+        el("#depDevice").value = "";
+        el("#depSim").value = "";
         el("#modalBackdrop").style.display = "flex";
       }
+      
       function closeModal() {
         el("#modalBackdrop").style.display = "none";
+        editingChildId = null;
+      }
+      
+      function editDependent(id) {
+        const user = users.find(u => u.id === id);
+        if (!user) {
+          setBanner("Dependent not found.", "warn");
+          return;
+        }
+        
+        editingChildId = id;
+        el("#modalTitle").textContent = "Edit Dependent";
+        el("#depName").value = user.name || "";
+        // Map category back to UI format
+        const uiCategory = user.category === "regular" ? "normal" : user.category;
+        el("#depCategory").value = uiCategory || "normal";
+        el("#depDevice").value = user.deviceId || "";
+        el("#depSim").value = user.sim && user.sim !== "—" ? user.sim : "";
+        el("#modalBackdrop").style.display = "flex";
+      }
+      
+      function confirmDeleteDependent(id) {
+        const user = users.find(u => u.id === id);
+        if (!user) {
+          setBanner("Dependent not found.", "warn");
+          return;
+        }
+        
+        el("#deleteConfirmText").textContent = `Are you sure you want to delete "${user.name}"? This will permanently delete all associated location logs and presence calls. This action cannot be undone.`;
+        el("#deleteModalBackdrop").style.display = "flex";
+        el("#btnConfirmDelete").onclick = () => deleteDependent(id);
+      }
+      
+      function closeDeleteModal() {
+        el("#deleteModalBackdrop").style.display = "none";
+      }
+      
+      async function deleteDependent(id) {
+        const user = users.find(u => u.id === id);
+        if (!user) {
+          setBanner("Dependent not found.", "warn");
+          closeDeleteModal();
+          return;
+        }
+        
+        const deleteBtn = el("#btnConfirmDelete");
+        const originalText = deleteBtn.textContent;
+        deleteBtn.disabled = true;
+        deleteBtn.textContent = "Deleting...";
+        
+        try {
+          const res = await fetch(`/dashboard/children/${id}`, {
+            method: "DELETE",
+            headers: {
+              "Content-Type": "application/json",
+              "X-CSRF-TOKEN": document.querySelector('meta[name=csrf-token]').content,
+              "Accept": "application/json",
+            },
+          });
+          
+          let data;
+          try {
+            data = await res.json();
+          } catch (jsonError) {
+            throw new Error(`Server returned status ${res.status}. Please check your connection.`);
+          }
+          
+          if (!res.ok) {
+            const errorMsg = data.message || "Failed to delete dependent.";
+            setBanner(errorMsg, "warn");
+            deleteBtn.disabled = false;
+            deleteBtn.textContent = originalText;
+            return;
+          }
+          
+          // Remove from local list
+          users = users.filter(u => u.id !== id);
+          
+          // If deleted user was active, select first available or null
+          if (activeUserId === id) {
+            activeUserId = users.length > 0 ? users[0].id : null;
+          }
+          
+          fillUserSelects();
+          renderUserCards();
+          renderUserProfile();
+          updateDependentStats(users);
+          
+          // Update map if needed
+          if (users.length > 0 && activeUserId) {
+            const u = users.find(x => x.id === activeUserId);
+            if (u) {
+              updateMap(u);
+              updateStatusbar(u);
+            }
+          } else {
+            updateMap(null);
+            updateStatusbar({ signal: 0, battery: 0, lastSeen: "—" });
+          }
+          
+          closeDeleteModal();
+          setBanner(data.message || "Dependent deleted successfully.", "success");
+        } catch (e) {
+          console.error("Error deleting dependent:", e);
+          const errorMsg = e.message || "Failed to delete dependent — network error. Please check your connection and try again.";
+          setBanner(errorMsg, "warn");
+        } finally {
+          deleteBtn.disabled = false;
+          deleteBtn.textContent = originalText;
+        }
       }
 
       // Logout handled by POST form submission above
@@ -1135,6 +1268,12 @@
         el("#btnAddChild").addEventListener("click", openModal);
         el("#btnModalDone").addEventListener("click", closeModal);
         el("#btnSaveDependent").addEventListener("click", saveDependent);
+        el("#btnCancelDelete").addEventListener("click", closeDeleteModal);
+        el("#deleteModalBackdrop").addEventListener("click", (e) => {
+          if (e.target.id === "deleteModalBackdrop") {
+            closeDeleteModal();
+          }
+        });
         el("#btnSendCall").addEventListener("click", sendPresenceCall);
         const profilePingBtn = el("#btnProfilePing");
         if (profilePingBtn) {
@@ -1387,13 +1526,27 @@
         const category = el('#depCategory').value;
         const device_id = el('#depDevice').value.trim();
         const sim_number = el('#depSim').value.trim();
+        
         if (!name || !device_id) {
           setBanner('Name and Device ID are required.', 'warn');
           return;
         }
+        
+        // Disable save button to prevent double submission
+        const saveBtn = el('#btnSaveDependent');
+        const originalText = saveBtn.textContent;
+        saveBtn.disabled = true;
+        saveBtn.textContent = editingChildId ? 'Updating...' : 'Saving...';
+        
         try {
-          const res = await fetch("{{ route('dashboard.createChild') }}", {
-            method: 'POST',
+          const isEdit = editingChildId !== null;
+          const url = isEdit 
+            ? `/dashboard/children/${editingChildId}`
+            : "{{ route('dashboard.createChild') }}";
+          const method = isEdit ? 'PUT' : 'POST';
+          
+          const res = await fetch(url, {
+            method: method,
             headers: {
               'Content-Type': 'application/json',
               'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content,
@@ -1401,31 +1554,77 @@
             },
             body: JSON.stringify({ name, category, device_id, sim_number })
           });
+          
+          let data;
+          try {
+            data = await res.json();
+          } catch (jsonError) {
+            // Response is not JSON
+            throw new Error(`Server returned status ${res.status}. Please check your connection.`);
+          }
+          
           if (!res.ok) {
-            const data = await res.json().catch(()=>({}));
-            const msg = data.message || (data.errors ? Object.values(data.errors)[0][0] : 'Failed to add dependent.');
-            setBanner(msg, 'warn');
+            // Handle validation errors
+            let errorMsg = isEdit ? 'Failed to update dependent.' : 'Failed to add dependent.';
+            if (data.errors) {
+              // Laravel validation errors format: { field: [messages] }
+              const firstError = Object.values(data.errors)[0];
+              errorMsg = Array.isArray(firstError) ? firstError[0] : firstError;
+            } else if (data.message) {
+              errorMsg = data.message;
+            }
+            setBanner(errorMsg, 'warn');
+            saveBtn.disabled = false;
+            saveBtn.textContent = originalText;
             return;
           }
-          const data = await res.json();
-          // Push to local list
-          users.push({
-            id: data.id,
-            name,
-            category,
-            deviceId: device_id,
-            sim: sim_number || '—',
-            signal: 0,
-            battery: 0,
-            lastSeen: null,
-            coords: null,
-          });
-          selectUser(data.id);
+          
+          if (isEdit) {
+            // Update existing user in local list
+            const userIndex = users.findIndex(u => u.id === editingChildId);
+            if (userIndex !== -1) {
+              users[userIndex] = {
+                ...users[userIndex],
+                name: data.name || name,
+                category: data.category || category,
+                deviceId: data.deviceId || device_id,
+                sim: data.sim || sim_number || '—',
+              };
+            }
+            selectUser(editingChildId);
+            setBanner('Dependent updated successfully.', 'success');
+          } else {
+            // Success - add to local list
+            users.push({
+              id: data.id,
+              name: data.name || name,
+              category: data.category || category,
+              deviceId: device_id,
+              sim: sim_number || '—',
+              signal: 0,
+              battery: 0,
+              lastSeen: null,
+              coords: null,
+            });
+            selectUser(data.id);
+            setBanner('Dependent added successfully.', 'success');
+          }
+          
+          // Clear modal fields
+          el('#depName').value = '';
+          el('#depDevice').value = '';
+          el('#depSim').value = '';
+          el('#depCategory').value = 'normal';
+          
           updateDependentStats(users);
           closeModal();
-          setBanner('Dependent added successfully.', 'success');
         } catch (e) {
-          setBanner('Failed to add dependent — network error.', 'warn');
+          console.error('Error saving dependent:', e);
+          const errorMsg = e.message || (editingChildId ? 'Failed to update dependent — network error. Please check your connection and try again.' : 'Failed to add dependent — network error. Please check your connection and try again.');
+          setBanner(errorMsg, 'warn');
+        } finally {
+          saveBtn.disabled = false;
+          saveBtn.textContent = originalText;
         }
       }
 
